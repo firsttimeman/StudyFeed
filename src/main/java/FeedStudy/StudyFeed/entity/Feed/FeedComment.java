@@ -1,5 +1,7 @@
-package FeedStudy.StudyFeed.entity;
+package FeedStudy.StudyFeed.entity.Feed;
 
+import FeedStudy.StudyFeed.entity.BaseEntity;
+import FeedStudy.StudyFeed.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 

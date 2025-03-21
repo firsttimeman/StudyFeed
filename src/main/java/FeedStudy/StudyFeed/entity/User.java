@@ -1,5 +1,6 @@
 package FeedStudy.StudyFeed.entity;
 
+import FeedStudy.StudyFeed.entity.Squad.SquadMember;
 import FeedStudy.StudyFeed.type.Gender;
 import FeedStudy.StudyFeed.type.Telecom;
 import FeedStudy.StudyFeed.type.UserRole;

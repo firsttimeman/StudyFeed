@@ -1,7 +1,7 @@
 package FeedStudy.StudyFeed.service;
 
 import FeedStudy.StudyFeed.dto.BlockSimpleDto;
-import FeedStudy.StudyFeed.entity.Block;
+import FeedStudy.StudyFeed.entity.Feed.Block;
 import FeedStudy.StudyFeed.entity.User;
 import FeedStudy.StudyFeed.exception.ErrorCode;
 import FeedStudy.StudyFeed.exception.exceptiontype.MemberException;

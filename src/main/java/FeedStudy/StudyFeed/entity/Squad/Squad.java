@@ -1,8 +1,9 @@
-package FeedStudy.StudyFeed.entity;
+package FeedStudy.StudyFeed.entity.Squad;
 
 import FeedStudy.StudyFeed.dto.SquadCreateRequestDto;
 import FeedStudy.StudyFeed.dto.SquadUpdateRequestDto;
-import FeedStudy.StudyFeed.repository.SquadRepository;
+import FeedStudy.StudyFeed.entity.BaseEntity;
+import FeedStudy.StudyFeed.entity.User;
 import FeedStudy.StudyFeed.type.*;
 import jakarta.persistence.*;
 import lombok.*;
@@ -18,7 +19,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @RequiredArgsConstructor
-public class Squad extends BaseEntity{
+public class Squad extends BaseEntity {
 
 
     @Column(nullable = false, unique = true)

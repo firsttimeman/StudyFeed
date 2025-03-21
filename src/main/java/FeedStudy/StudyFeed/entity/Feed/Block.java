@@ -1,5 +1,7 @@
-package FeedStudy.StudyFeed.entity;
+package FeedStudy.StudyFeed.entity.Feed;
 
+import FeedStudy.StudyFeed.entity.BaseEntity;
+import FeedStudy.StudyFeed.entity.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,7 +14,7 @@ import lombok.Setter;
        uniqueConstraints = @UniqueConstraint(columnNames = {"blocker_id", "blocked_id"})
 )
 @NoArgsConstructor
-public class Block extends BaseEntity{
+public class Block extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "blocker_id", nullable = false)

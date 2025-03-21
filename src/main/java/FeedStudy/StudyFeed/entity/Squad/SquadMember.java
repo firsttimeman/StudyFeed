@@ -1,5 +1,7 @@
-package FeedStudy.StudyFeed.entity;
+package FeedStudy.StudyFeed.entity.Squad;
 
+import FeedStudy.StudyFeed.entity.BaseEntity;
+import FeedStudy.StudyFeed.entity.User;
 import FeedStudy.StudyFeed.type.AttendanceStatus;
 import FeedStudy.StudyFeed.type.SquadAccessType;
 import jakarta.persistence.*;
@@ -11,7 +13,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class SquadMember extends BaseEntity{
+public class SquadMember extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "squad_id", nullable = false)

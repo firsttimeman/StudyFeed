@@ -1,8 +1,8 @@
 package FeedStudy.StudyFeed.service;
 
 import FeedStudy.StudyFeed.dto.FeedEditRequest;
-import FeedStudy.StudyFeed.entity.Feed;
-import FeedStudy.StudyFeed.entity.FeedImage;
+import FeedStudy.StudyFeed.entity.Feed.Feed;
+import FeedStudy.StudyFeed.entity.Feed.FeedImage;
 import FeedStudy.StudyFeed.entity.User;
 import FeedStudy.StudyFeed.exception.ErrorCode;
 import FeedStudy.StudyFeed.exception.exceptiontype.FeedException;

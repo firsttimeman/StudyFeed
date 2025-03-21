@@ -1,6 +1,8 @@
-package FeedStudy.StudyFeed.entity;
+package FeedStudy.StudyFeed.entity.Feed;
 
 import FeedStudy.StudyFeed.dto.FeedEditRequest;
+import FeedStudy.StudyFeed.entity.BaseEntity;
+import FeedStudy.StudyFeed.entity.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -16,7 +18,7 @@ import java.util.Optional;
 @Setter
 @Entity
 @NoArgsConstructor
-public class Feed extends BaseEntity{
+public class Feed extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

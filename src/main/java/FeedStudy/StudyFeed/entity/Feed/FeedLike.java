@@ -1,5 +1,7 @@
-package FeedStudy.StudyFeed.entity;
+package FeedStudy.StudyFeed.entity.Feed;
 
+import FeedStudy.StudyFeed.entity.BaseEntity;
+import FeedStudy.StudyFeed.entity.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -7,11 +9,10 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor
-@Table(uniqueConstraints = @UniqueConstraint(
-        columnNames = {"user_id", "feed_id"}
-))
-public class FeedReport extends BaseEntity {
-
+@Table(
+        uniqueConstraints = @UniqueConstraint(
+                columnNames = {"user_id", "feed_id"}))
+public class FeedLike extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -20,12 +21,8 @@ public class FeedReport extends BaseEntity {
     @JoinColumn(name = "feed_id", nullable = false)
     private Feed feed;
 
-    @Column(nullable = false, length = 25)
-    private String reason;
-
-    public FeedReport(User user, Feed feed, String reason) {
+    public FeedLike(User user, Feed feed) {
         this.user = user;
         this.feed = feed;
-        this.reason = reason;
     }
 }

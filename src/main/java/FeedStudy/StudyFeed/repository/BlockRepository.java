@@ -1,6 +1,6 @@
 package FeedStudy.StudyFeed.repository;
 
-import FeedStudy.StudyFeed.entity.Block;
+import FeedStudy.StudyFeed.entity.Feed.Block;
 import FeedStudy.StudyFeed.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 

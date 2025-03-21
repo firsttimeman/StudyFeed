@@ -1,8 +1,8 @@
 package FeedStudy.StudyFeed.service;
 
 import FeedStudy.StudyFeed.dto.FeedCommentRequestDto;
-import FeedStudy.StudyFeed.entity.Feed;
-import FeedStudy.StudyFeed.entity.FeedComment;
+import FeedStudy.StudyFeed.entity.Feed.Feed;
+import FeedStudy.StudyFeed.entity.Feed.FeedComment;
 import FeedStudy.StudyFeed.entity.User;
 import FeedStudy.StudyFeed.repository.FeedCommentRepository;
 import FeedStudy.StudyFeed.repository.FeedRepository;

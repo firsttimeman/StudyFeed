@@ -1,7 +1,7 @@
 package FeedStudy.StudyFeed.repository;
 
-import FeedStudy.StudyFeed.entity.Feed;
-import FeedStudy.StudyFeed.entity.FeedLike;
+import FeedStudy.StudyFeed.entity.Feed.Feed;
+import FeedStudy.StudyFeed.entity.Feed.FeedLike;
 import FeedStudy.StudyFeed.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 

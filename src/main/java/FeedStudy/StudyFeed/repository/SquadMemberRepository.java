@@ -1,7 +1,7 @@
 package FeedStudy.StudyFeed.repository;
 
-import FeedStudy.StudyFeed.entity.Squad;
-import FeedStudy.StudyFeed.entity.SquadMember;
+import FeedStudy.StudyFeed.entity.Squad.Squad;
+import FeedStudy.StudyFeed.entity.Squad.SquadMember;
 import FeedStudy.StudyFeed.entity.User;
 import FeedStudy.StudyFeed.type.AttendanceStatus;
 import org.springframework.data.jpa.repository.JpaRepository;

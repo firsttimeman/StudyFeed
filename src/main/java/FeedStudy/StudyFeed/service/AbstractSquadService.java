@@ -1,8 +1,8 @@
 package FeedStudy.StudyFeed.service;
 
 import FeedStudy.StudyFeed.dto.SquadCreateRequestDto;
-import FeedStudy.StudyFeed.entity.Squad;
-import FeedStudy.StudyFeed.entity.SquadMember;
+import FeedStudy.StudyFeed.entity.Squad.Squad;
+import FeedStudy.StudyFeed.entity.Squad.SquadMember;
 import FeedStudy.StudyFeed.entity.User;
 import FeedStudy.StudyFeed.exception.ErrorCode;
 import FeedStudy.StudyFeed.exception.exceptiontype.MemberException;

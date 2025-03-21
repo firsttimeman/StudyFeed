@@ -1,5 +1,6 @@
-package FeedStudy.StudyFeed.entity;
+package FeedStudy.StudyFeed.entity.Feed;
 
+import FeedStudy.StudyFeed.entity.BaseEntity;
 import FeedStudy.StudyFeed.exception.ErrorCode;
 import FeedStudy.StudyFeed.exception.exceptiontype.FeedException;
 import jakarta.persistence.*;

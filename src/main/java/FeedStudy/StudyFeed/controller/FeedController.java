@@ -2,7 +2,7 @@ package FeedStudy.StudyFeed.controller;
 
 import FeedStudy.StudyFeed.dto.FeedEditRequest;
 import FeedStudy.StudyFeed.dto.FeedReportRequest;
-import FeedStudy.StudyFeed.entity.Feed;
+import FeedStudy.StudyFeed.entity.Feed.Feed;
 import FeedStudy.StudyFeed.entity.User;
 import FeedStudy.StudyFeed.service.FeedLikeService;
 import FeedStudy.StudyFeed.service.FeedReportService;
