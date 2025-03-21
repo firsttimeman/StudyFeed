@@ -24,8 +24,11 @@ public enum ErrorCode {
     NOT_FEED_USER("NOT_FEED_USER", "피드 작성자가 아닙니다."),
     ALREADY_REPORTED("ALREADY_REPORTED", "이미 신고가 된 피드입니다."),
     REPORT_NOT_FOUND("REPORT_NOT_FOUND", "신고 피드가 존재하지 않습니다."),
-    BANNED_USER("BANNED_USER", "차단된 유저입니다.");
+    BANNED_USER("BANNED_USER", "차단된 유저입니다."),
 
+    UNABLE_TO_USE_MIN_MAX_AGE("UNABLE_TO_USE_MIN_MAX_AGE", "나이대를 선택했으면 min/maxAge를 입력할수가 없습니다."),
+    MIN_MAX_AGE_ERROR("MIN_MAX_AGE_ERROR", "최소 나이는 최대 나이보다 작아야 합니다."),
+    GENDER_ERROR("GENDER_ERROR", "해당 모임은 특정 성별만 가입할 수 있습니다.");
 
     private final String code;
     private final String description;

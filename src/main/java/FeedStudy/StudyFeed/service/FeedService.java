@@ -27,6 +27,7 @@ public class FeedService {
     private final FeedRepository feedRepository;
     private final UserRepository userRepository;
     private final BlockRepository blockRepository;
+    private final FirebasePublisherService firebasePublisherService;
     private FileService fileService;
 
 
@@ -48,19 +49,19 @@ public class FeedService {
         deleteImages(update.getDeletedImages());
     }
 
-    public Page<Feed> getMyFeeds(User user, String category, Pageable pageable) {
+    public Page<Feed> getMyFeeds(User user, Pageable pageable) {
         return feedRepository.findByUser(user, pageable);
     }
 
-    public Page<Feed> getUserFeeds(User currentUser, Long userId, Pageable pageable) {
+    public Page<Feed> getUserFeeds(User currentUser, Long targetUserId, Pageable pageable) {
+        User targetUser = userRepository.findById(targetUserId).orElseThrow(() -> new IllegalArgumentException(""));
         List<User> excludedUsers = getExcludedUsers(currentUser);
 
-        if(excludedUsers.contains(targetUser)) {
+        if (excludedUsers.contains(targetUser)) {
             throw new MemberException(ErrorCode.BANNED_USER);
         }
         return feedRepository.findByUser(targetUser, pageable);
     }
-
 
 
     private List<User> getExcludedUsers(User currentUser) {
@@ -94,7 +95,7 @@ public class FeedService {
     }
 
     private void validateOwner(User user, Feed feed) {
-        if(!user.equals(feed.getUser())) {
+        if (!user.equals(feed.getUser())) {
             throw new FeedException(ErrorCode.NOT_FEED_USER);
         }
     }
@@ -104,4 +105,7 @@ public class FeedService {
         IntStream.range(0, images.size())
                 .forEach(i -> fileService.upload(addImages.get(i), images.get(i).getUniqueName()));
     }
+
 }
+
+

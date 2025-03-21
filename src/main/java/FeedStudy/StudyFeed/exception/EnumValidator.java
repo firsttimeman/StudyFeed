@@ -20,7 +20,7 @@ public class EnumValidator implements ConstraintValidator<ValidEnum, Object> {
     @Override
     public boolean isValid(Object value, ConstraintValidatorContext context) {
         if (value == null) {
-            return false; // null 값 허용 안 함
+           return true;
         }
 
         if (value instanceof String) { // ✅ String 타입인 경우

@@ -3,12 +3,13 @@ package FeedStudy.StudyFeed.entity;
 import FeedStudy.StudyFeed.type.Gender;
 import FeedStudy.StudyFeed.type.Telecom;
 import FeedStudy.StudyFeed.type.UserRole;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import FeedStudy.StudyFeed.utils.Utils;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.*;
+
+import java.time.LocalDate;
+import java.util.List;
 
 @Entity
 @Builder
@@ -23,7 +24,6 @@ public class User extends BaseEntity {
     private String email;
 
 
-    //nickname TODO 추가하기
     @Column(unique = true, nullable = false)
     private String nickName;
 
@@ -42,5 +42,19 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private UserRole userRole;
 
+    @Column(nullable = true)
+    private String fcmToken;
 
+    @Column(nullable = true, columnDefinition = "BOOLEAN DEFAULT false")
+    private Boolean receiveEventAlarm, receiveFeedAlarm;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SquadMember> squads;
+
+    @Column(nullable = false)
+    private LocalDate birthDate;
+
+    public int getAge() {
+        return Utils.calculateAge(birthDate);
+    }
 }

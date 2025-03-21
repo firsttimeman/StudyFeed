@@ -3,12 +3,11 @@ package FeedStudy.StudyFeed.dto;
 import FeedStudy.StudyFeed.exception.ValidEnum;
 import FeedStudy.StudyFeed.type.Gender;
 import FeedStudy.StudyFeed.type.Telecom;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -42,4 +41,8 @@ public class SignUpRequestDto {
     @NotNull(message = "성별을 입력하세요")
     @ValidEnum(enumClass = Gender.class, message = "올바른 성별을 입력하세요")
     private Gender gender;
+
+    @NotNull(message = "생년월일을 입력해주세요")
+    @Past(message = "과거 날짜여야 합니다.")
+    private LocalDate birthDate;
 }

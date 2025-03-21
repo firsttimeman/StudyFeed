@@ -83,6 +83,7 @@ public class UserService implements UserDetailsService {
                 .telecom(signUpRequestDto.getTelecom())
                 .gender(signUpRequestDto.getGender())
                 .nickName(signUpRequestDto.getNickName())
+                .birthDate(signUpRequestDto.getBirthDate()) // feed 알람도 추가해야 하는지 Todo
                 .build();
 
 

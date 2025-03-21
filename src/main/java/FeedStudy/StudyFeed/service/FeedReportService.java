@@ -29,15 +29,5 @@ public class FeedReportService {
         return true;
     }
 
-    public boolean unReportFeed(User user, Long feedId) {
-        Feed feed = feedRepository.findById(feedId)
-                .orElseThrow(() -> new FeedException(ErrorCode.FEED_NOT_FOUND));
 
-        FeedReport feedReport = feedReportRepository.findByUserAndFeed(user, feed)
-                .orElseThrow(() -> new FeedException(ErrorCode.REPORT_NOT_FOUND));
-
-        feedReportRepository.delete(feedReport);
-        feed.decreaseReportCount();
-        return true;
-    }
 }

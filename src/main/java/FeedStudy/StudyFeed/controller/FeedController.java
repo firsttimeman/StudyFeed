@@ -7,8 +7,10 @@ import FeedStudy.StudyFeed.entity.User;
 import FeedStudy.StudyFeed.service.FeedLikeService;
 import FeedStudy.StudyFeed.service.FeedReportService;
 import FeedStudy.StudyFeed.service.FeedService;
+import FeedStudy.StudyFeed.service.FirebasePublisherService;
+import com.google.firebase.messaging.FirebaseMessaging;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -17,11 +19,22 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/feed")
-@RequiredArgsConstructor
+// @RequiredArgsConstructor
 public class FeedController {
-    private final FeedService feedService;
-    private final FeedReportService feedReportService;
-    private final FeedLikeService feedLikeService;
+    @Autowired
+    private FeedService feedService;
+    @Autowired
+    private FeedReportService feedReportService;
+    @Autowired
+    private FeedLikeService feedLikeService;
+
+    private final FirebaseMessaging fcm;
+    private FirebasePublisherService firebasePublisherService;
+
+    public FeedController(FirebaseMessaging fcm) {
+        this.fcm = fcm;
+        firebasePublisherService = new FirebasePublisherService(fcm);
+    }
 
     /**
      * 등록
@@ -32,9 +45,7 @@ public class FeedController {
         return ResponseEntity.ok("Success");
     }
 
-    /**
-     * 추가
-     */
+
 
 
     /**
@@ -60,26 +71,23 @@ public class FeedController {
 
     /**
      * 홈피드
+     * 모든 유저의 피드 + 차단된 유저는 제외
      */
-    @GetMapping
-    public Page<Feed> getAllFeed(@AuthenticationPrincipal User user,
-                                 @RequestParam(required = false) String category,
-                                 Pageable pageable
-                                 ) {
-
-        return feedService.getMyFeeds(user, category, pageable);
-    }
 
 
     /**
      * 내 피드
+     * 카테고리 뺴기
      */
+    @GetMapping
+    public Page<Feed> getAllFeed(@AuthenticationPrincipal User user, Pageable pageable) {
 
+        return feedService.getMyFeeds(user, pageable);
+    }
 
 
     /**
      * 상대방 피드
-     * //TODO 이거 물어보기
      */
     @GetMapping("/user/{userId}")
     public Page<Feed> getUserFeeds(@AuthenticationPrincipal User user, @PathVariable Long userId, Pageable pageable) {
@@ -101,7 +109,7 @@ public class FeedController {
     @PostMapping("/{feedId}")
     public ResponseEntity<String> likeClick(@AuthenticationPrincipal User user,
                                             @PathVariable Long feedId) {
-        boolean isLiked = feedLikeService.LikeClick(user, feedId);
+        boolean isLiked = feedLikeService.likeClick(user, feedId);
 
         if (isLiked) {
             return ResponseEntity.ok("좋아요 완료");
@@ -111,11 +119,10 @@ public class FeedController {
     }
 
 
-
     /**
      * 피드 신고하기
      */
-    @PostMapping("/{feedId}")
+    @PostMapping("/report/{feedId}")
     public ResponseEntity<String> reportFeed(@AuthenticationPrincipal User user,
                                              @PathVariable Long feedId,
                                              @Valid @RequestBody FeedReportRequest request
@@ -123,14 +130,6 @@ public class FeedController {
         feedReportService.reportFeed(user, feedId, request.getReason());
         return ResponseEntity.ok("Success report");
     }
-
-    @DeleteMapping("/{feedId}")
-    public ResponseEntity<String> unReportFeed(@AuthenticationPrincipal User user,
-                                               @PathVariable Long feedId) {
-        feedReportService.unReportFeed(user, feedId);
-        return ResponseEntity.ok("신고 취소 완료");
-    }
-
 
 
 }
