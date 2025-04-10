@@ -1,7 +1,7 @@
 package FeedStudy.StudyFeed;
 
-import FeedStudy.StudyFeed.entity.Region;
-import FeedStudy.StudyFeed.repository.RegionRepository;
+import FeedStudy.StudyFeed.global.entity.Region;
+import FeedStudy.StudyFeed.global.repository.RegionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
