@@ -35,3 +35,16 @@ spring:
 gcp:
   firebase:
     service-account: classpath:firebase/firebase_service_key.json
+
+
+cloud:
+  aws:
+    credentials:
+      access-key: AKIAZI2LDE5M6BC22SHD
+      secret-key: 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
+    region:
+      static: ap-northeast-2
+    s3:
+      bucket: test-image-bucket-123
+    stack:
+      auto: false

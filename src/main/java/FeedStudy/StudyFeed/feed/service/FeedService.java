@@ -14,12 +14,15 @@ import FeedStudy.StudyFeed.feed.repository.FeedRepository;
 import FeedStudy.StudyFeed.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.IntStream;
 
 @Service
@@ -30,25 +33,65 @@ public class FeedService {
     private final UserRepository userRepository;
     private final BlockRepository blockRepository;
     private final FirebasePublisherService firebasePublisherService;
-    private FileService fileService;
+    @Qualifier("s3FileService")
+    private final FileService fileService;
 
 
     public void create(User user, FeedEditRequest request) {
-        List<FeedImage> images = request.getAddImages().stream()
-                .map(image -> new FeedImage(image.getOriginalFilename()))
-                .toList();
+//        List<FeedImage> images = request.getAddImages().stream()
+//                .map(image -> new FeedImage(image.getOriginalFilename()))
+//                .toList();
+//
+//        Feed feed = new Feed();
+//        saveFeedImages(feed.getImages(), request.getAddImages());
 
-        Feed feed = new Feed();
-        saveFeedImages(feed.getImages(), request.getAddImages());
+        Feed feed = new Feed(user, request, new ArrayList<>());
+        feedRepository.save(feed);
+
+        uploadAndCreateImages(request.getAddImages(), feed);
+
     }
 
+    @Transactional
+    public void delete(User user, Long feedId) {
+        Feed feed = feedRepository.findById(feedId)
+                .orElseThrow(() -> new FeedException(ErrorCode.FEED_NOT_FOUND));
+
+        validateOwner(user, feed);
+        deleteImages(feed.getImages());
+        feedRepository.delete(feed);
+
+    }
+
+    private List<FeedImage> uploadAndCreateImages(List<MultipartFile> files, Feed feed) {
+        return files.stream().map(file -> {
+            String ext = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
+            String fileName = UUID.randomUUID().toString().replace("-", "") + ext;
+
+            fileService.upload(file, fileName);
+            String fullUrl = fileService.getFullUrl(fileName);
+            FeedImage image = new FeedImage(fullUrl);
+            image.initFeed(feed);
+            return image;
+        }).toList();
+    }
+
+    @Transactional
     public void modify(User user, FeedEditRequest request, Long feedId) {
         Feed feed = feedRepository.findById(feedId)
                 .orElseThrow(() -> new FeedException(ErrorCode.FEED_NOT_FOUND));
         validateOwner(user, feed);
-        Feed.ImageUpdatedResult update = feed.update(request);
-        saveFeedImages(update.getAddedImages(), request.getAddImages());
-        deleteImages(update.getDeletedImages());
+//        Feed.ImageUpdatedResult update = feed.update(request);
+//        saveFeedImages(update.getAddedImages(), request.getAddImages());
+//        deleteImages(update.getDeletedImages());
+
+        deleteImages(feed.getImages());
+        feed.getImages().clear();
+
+        List<FeedImage> newImages = uploadAndCreateImages(request.getAddImages(), feed);
+        feed.getImages().addAll(newImages);
+        feed.update(request);
+
     }
 
     public Page<Feed> getMyFeeds(User user, Pageable pageable) {
@@ -85,20 +128,15 @@ public class FeedService {
 
     }
 
-    @Transactional
-    public void delete(User user, Long feedId) {
-        Feed feed = feedRepository.findById(feedId)
-                .orElseThrow(() -> new FeedException(ErrorCode.FEED_NOT_FOUND));
-
-        validateOwner(user, feed);
-        deleteImages(feed.getImages());
-        feedRepository.delete(feed);
-
-    }
-
 
     private void deleteImages(List<FeedImage> deletedImages) {
-        deletedImages.forEach(i -> fileService.delete(i.getUniqueName()));
+//        deletedImages.forEach(i -> fileService.delete(i.getUniqueName()));
+
+        deletedImages.forEach(image -> {
+            String imageUrl = image.getImageUrl();
+            String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+            fileService.delete(fileName);
+        });
     }
 
     private void validateOwner(User user, Feed feed) {
@@ -108,10 +146,10 @@ public class FeedService {
     }
 
 
-    private void saveFeedImages(List<FeedImage> images, List<MultipartFile> addImages) {
-        IntStream.range(0, images.size())
-                .forEach(i -> fileService.upload(addImages.get(i), images.get(i).getUniqueName()));
-    }
+//    private void saveFeedImages(List<FeedImage> images, List<MultipartFile> addImages) {
+//        IntStream.range(0, images.size())
+//                .forEach(i -> fileService.upload(addImages.get(i), images.get(i).getUniqueName()));
+//    }
 
 }
 

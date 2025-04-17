@@ -13,7 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 @Slf4j
-@Service
+@Service("localFileService")
 public class LocalFileService implements FileService {
 
     @Value("/var/www/html/upload")
