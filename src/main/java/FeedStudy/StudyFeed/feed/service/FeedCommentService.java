@@ -1,5 +1,6 @@
 package FeedStudy.StudyFeed.feed.service;
 
+import FeedStudy.StudyFeed.feed.dto.FeedCommentDto;
 import FeedStudy.StudyFeed.feed.dto.FeedCommentRequestDto;
 import FeedStudy.StudyFeed.feed.entity.Feed;
 import FeedStudy.StudyFeed.feed.entity.FeedComment;
@@ -9,7 +10,13 @@ import FeedStudy.StudyFeed.global.service.FirebaseMessagingService;
 import FeedStudy.StudyFeed.user.entity.User;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -67,6 +74,23 @@ public class FeedCommentService {
 
         commentRepository.delete(comment);
 
+    }
+
+    public Page<FeedCommentDto> getReplies(Long parentId, int page, int size) {
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by("createTime").ascending()
+        );
+        return commentRepository.findByParentId(parentId, pageable)
+                .map(FeedCommentDto::fromEntity);
+    }
+
+    public List<FeedCommentDto> getAllReplies(Long parentId) {
+        return commentRepository.findByParentId(parentId, Sort.by("createTime").ascending())
+                .stream()
+                .map(feedComment -> FeedCommentDto.fromEntity(feedComment))
+                .toList();
     }
 
 

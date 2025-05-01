@@ -1,5 +1,6 @@
 package FeedStudy.StudyFeed.feed.dto;
 
+import FeedStudy.StudyFeed.feed.entity.FeedComment;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,7 +9,6 @@ import lombok.Setter;
 @Setter
 public class FeedCommentRequestDto {
 
-    @NotNull
     private Long commentId;
 
     @NotNull
@@ -16,4 +16,6 @@ public class FeedCommentRequestDto {
 
     @NotNull
     private Long feedId;
+
+
 }

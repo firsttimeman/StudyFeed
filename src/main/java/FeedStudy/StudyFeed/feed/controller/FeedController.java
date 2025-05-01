@@ -1,5 +1,6 @@
 package FeedStudy.StudyFeed.feed.controller;
 
+import FeedStudy.StudyFeed.feed.dto.FeedCommentDto;
 import FeedStudy.StudyFeed.feed.dto.FeedCommentRequestDto;
 import FeedStudy.StudyFeed.feed.dto.FeedEditRequest;
 import FeedStudy.StudyFeed.feed.dto.FeedReportRequest;
@@ -16,6 +17,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/feed")
@@ -143,6 +146,21 @@ public class FeedController {
     ) {
         feedReportService.reportFeed(user, feedId, request.getReason());
         return ResponseEntity.ok("Success report");
+    }
+
+    @GetMapping("/{feedId}/comments/{commentId}/replies")
+    public ResponseEntity<Page<FeedCommentDto>> getReplies(@PathVariable Long feedId,
+                                                           @PathVariable("commentId") Long parentId,
+                                                           @RequestParam(defaultValue = "0") int page,
+                                                           @RequestParam(defaultValue = "2") int size) {
+        Page<FeedCommentDto> replies = feedCommentService.getReplies(parentId, page, size);
+        return ResponseEntity.ok(replies);
+    }
+
+    @GetMapping("/{feedId}/comments/{commentId}/replies/all")
+    public ResponseEntity<List<FeedCommentDto>> getRepliesAll(@PathVariable Long feedId, @PathVariable("commentId") Long parentId) {
+        List<FeedCommentDto> allReplies = feedCommentService.getAllReplies(parentId);
+        return ResponseEntity.ok(allReplies);
     }
 
 

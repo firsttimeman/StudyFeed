@@ -28,4 +28,5 @@ public class FeedComment extends BaseEntity {
     @Lob
     @Column(nullable = false)
     private String comment;
+
 }
