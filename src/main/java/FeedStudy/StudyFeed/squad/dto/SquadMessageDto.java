@@ -25,7 +25,7 @@ public class SquadMessageDto {
         Long squadMessageId = message.getId();
         String senderName = message.getSender().getNickName();
         String content = message.getContent();
-        LocalDateTime timeStamp = message.getCreateTime();
+        LocalDateTime timeStamp = message.getCreatedAt();
 
         return new SquadMessageDto(squadMessageId, senderName, content, timeStamp);
 

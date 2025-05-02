@@ -39,14 +39,14 @@ public class SquadController {
      * @return
      */
 
-    @PutMapping("/{squadId")
+    @PutMapping("/{squadId}")
     public ResponseEntity<String> updateSquad(@PathVariable Long squadId, @AuthenticationPrincipal User user,
                                               @Valid @RequestBody SquadUpdateRequestDto requestDto) {
         squadService.updateSquad(squadId, user, requestDto);
         return ResponseEntity.ok("Squad updated");
     }
 
-    @DeleteMapping("/{squadId")
+    @DeleteMapping("/{squadId}")
     public ResponseEntity<String> deleteSquad(@PathVariable Long squadId,
                                               @AuthenticationPrincipal User user) {
         squadService.deleteSquad(squadId, user);

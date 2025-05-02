@@ -12,7 +12,6 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@RequiredArgsConstructor
 public class SquadChatMessage extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

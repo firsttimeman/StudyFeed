@@ -2,6 +2,7 @@ package FeedStudy.StudyFeed.user.controller;
 
 import FeedStudy.StudyFeed.user.dto.LoginRequestDto;
 import FeedStudy.StudyFeed.user.dto.SignUpRequestDto;
+import FeedStudy.StudyFeed.user.entity.User;
 import FeedStudy.StudyFeed.user.service.UserService;
 import jakarta.mail.MessagingException;
 import jakarta.validation.Valid;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -62,6 +64,24 @@ public class AuthController {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(response);
     }
+
+
+    /**
+     * 유저 fcmtoken 재발행 만들기
+     */
+    @PutMapping("/update_fcm")
+    public ResponseEntity<String> refreshFcmToken(@RequestParam("token") String fcmToken,
+                                                  @AuthenticationPrincipal User user) {
+
+        Long id = user.getId();
+
+        userService.fcmTokenRefresh(id, fcmToken);
+        return ResponseEntity.ok("FCM 토큰이 재발급 되었습니다.");
+    }
+
+    /**
+     * 닉네임 null 일시 새로 만들기
+     */
 
 
 }

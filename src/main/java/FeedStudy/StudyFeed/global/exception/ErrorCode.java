@@ -11,7 +11,8 @@ public enum ErrorCode {
     EMAIL_ALREADY_EXISTS("EMAIL_ALREADY_EXISTS", "이미 사용중인 이메일입니다"),
     USER_NOT_FOUND("USER_NOT_FOUND", "맞는 사용자가 없습니다."),
     PASSWORD_NOT_MATCH( "PASSWORD_NOT_MATCH", "비밀번호가 틀립니다."),
-
+    NICKNAME_ALREADY_EXISTS("NICKNAME_ALREADY_EXISTS", "닉네임이 존재합니다"),
+    NICKNAME_GENERATION_FAILED("NICKNAME_GENERATION_FAILED", "닉네임 생성에 실패했습니다."),
     INVALID_ACCESS_TOKEN("INVALID_ACCESS_TOKEN", "액세스 토큰이 존재하지 않습니다."),
 
     AUTH_CODE_MISMATCH("AUTH_CODE_MISMATCH", "인증 번호가 맞지 않습니다."),
@@ -28,7 +29,10 @@ public enum ErrorCode {
 
     UNABLE_TO_USE_MIN_MAX_AGE("UNABLE_TO_USE_MIN_MAX_AGE", "나이대를 선택했으면 min/maxAge를 입력할수가 없습니다."),
     MIN_MAX_AGE_ERROR("MIN_MAX_AGE_ERROR", "최소 나이는 최대 나이보다 작아야 합니다."),
-    GENDER_ERROR("GENDER_ERROR", "해당 모임은 특정 성별만 가입할 수 있습니다.");
+    GENDER_ERROR("GENDER_ERROR", "해당 모임은 특정 성별만 가입할 수 있습니다."),
+
+    FCM_TOKEN_NOT_FOUND( "FCM_TOKEN_NOT_FOUND","등록되지 않은 fcmToken 입니다.");
+
 
     private final String code;
     private final String description;

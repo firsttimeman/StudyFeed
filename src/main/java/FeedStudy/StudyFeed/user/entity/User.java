@@ -26,7 +26,7 @@ public class User extends BaseEntity {
     private String email;
 
 
-    @Column(unique = true, nullable = false)
+    @Column(unique = true, nullable = true)
     private String nickName;
 
     @Column(nullable = false)
@@ -46,6 +46,9 @@ public class User extends BaseEntity {
 
     @Column(nullable = true)
     private String fcmToken;
+
+    private String providerType;
+    private String providerId;
 
     @Column(nullable = true, columnDefinition = "BOOLEAN DEFAULT false")
     private Boolean receiveEventAlarm, receiveFeedAlarm;

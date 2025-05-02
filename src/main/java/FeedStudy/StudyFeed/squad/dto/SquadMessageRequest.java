@@ -25,7 +25,7 @@ public class SquadMessageRequest {
         Long squadId = message.getId();
         Long senderId = message.getSender().getId();
         String content = message.getContent();
-        LocalDateTime timeStamp = message.getCreateTime();
+        LocalDateTime timeStamp = message.getCreatedAt();
 
         return new SquadMessageRequest(squadId, senderId, content, timeStamp);
     }

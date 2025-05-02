@@ -1,5 +1,6 @@
 package FeedStudy.StudyFeed.user.service;
 
+import FeedStudy.StudyFeed.global.utils.NickNameUtils;
 import FeedStudy.StudyFeed.user.dto.LoginRequestDto;
 import FeedStudy.StudyFeed.user.dto.SignUpRequestDto;
 import FeedStudy.StudyFeed.user.entity.User;
@@ -15,6 +16,7 @@ import FeedStudy.StudyFeed.user.repository.UserRepository;
 import FeedStudy.StudyFeed.global.type.UserRole;
 import io.jsonwebtoken.Claims;
 import jakarta.mail.MessagingException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -74,15 +76,17 @@ public class UserService implements UserDetailsService {
             throw new MemberException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
-        String encodedPassword = passwordEncoder.encode(signUpRequestDto.getPassword());
+        String encodedPassword = passwordEncoder.encode(signUpRequestDto.getProviderType() + signUpRequestDto.getProviderId());
 
         User newUser = User.builder()
                 .email(email)
                 .password(encodedPassword)
                 .userRole(UserRole.USER)
+                .providerType(signUpRequestDto.getProviderType())
+                .providerId(signUpRequestDto.getProviderId())
                 .telecom(signUpRequestDto.getTelecom())
                 .gender(signUpRequestDto.getGender())
-                .nickName(signUpRequestDto.getNickName())
+//                .nickName(signUpRequestDto.getNickName())
                 .birthDate(signUpRequestDto.getBirthDate()) // feed 알람도 추가해야 하는지 Todo
                 .build();
 
@@ -141,6 +145,53 @@ public class UserService implements UserDetailsService {
         }
     }
 
+    @Transactional
+    public void fcmTokenRefresh(Long userId, String fcmToken) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
+
+        Boolean check = userRepository.existsByFcmToken(fcmToken);
+
+        if(!check) {
+            throw new TokenException(ErrorCode.FCM_TOKEN_NOT_FOUND);
+        }
+        user.setFcmToken(fcmToken);
+    }
+    
+    public void makeNickName(Long userId, String nickName) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
+
+        if(user.getNickName() != null && !user.getNickName().isBlank()) {
+            return;
+        }
+
+        if(nickName != null && !nickName.isBlank()) {
+            if(userRepository.existsByNickName(nickName)) {
+                throw new MemberException(ErrorCode.NICKNAME_ALREADY_EXISTS);
+            }
+            user.setNickName(nickName);
+        } else {
+            String generateNickName = generateUniqueNickName();
+            user.setNickName(generateNickName);
+        }
+
+    }
+
+    private String generateUniqueNickName() {
+        String nickname;
+        int attempt = 0;
+        do {
+            nickname = NickNameUtils.generateNickname();
+            attempt++;
+            if(attempt > 10) {
+                throw new MemberException(ErrorCode.NICKNAME_GENERATION_FAILED);
+            }
+        }while(userRepository.existsByNickName(nickname));
+        return nickname;
+    }
+
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -149,4 +200,6 @@ public class UserService implements UserDetailsService {
 
         return new CustomUserDetails(user);
     }
+
+
 }

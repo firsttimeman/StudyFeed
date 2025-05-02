@@ -24,7 +24,7 @@ public class FeedCommentDto {
                 feedComment.getParent() != null ? feedComment.getParent().getId() : null,
                 feedComment.getUser().getNickName(),
                 feedComment.getComment(),
-                feedComment.getCreateTime()
+                feedComment.getCreatedAt()
         );
     }
 
