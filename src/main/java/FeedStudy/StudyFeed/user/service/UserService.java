@@ -1,27 +1,28 @@
 package FeedStudy.StudyFeed.user.service;
 
+import FeedStudy.StudyFeed.global.exception.ErrorCode;
+import FeedStudy.StudyFeed.global.exception.exceptiontype.AuthCodeException;
+import FeedStudy.StudyFeed.global.exception.exceptiontype.MemberException;
+import FeedStudy.StudyFeed.global.exception.exceptiontype.TokenException;
+import FeedStudy.StudyFeed.global.jwt.JwtUtil;
+import FeedStudy.StudyFeed.global.type.UserRole;
 import FeedStudy.StudyFeed.global.utils.NickNameUtils;
 import FeedStudy.StudyFeed.user.dto.LoginRequestDto;
 import FeedStudy.StudyFeed.user.dto.SignUpRequestDto;
 import FeedStudy.StudyFeed.user.entity.User;
-import FeedStudy.StudyFeed.global.exception.exceptiontype.AuthCodeException;
-import FeedStudy.StudyFeed.global.exception.ErrorCode;
-import FeedStudy.StudyFeed.global.exception.exceptiontype.MemberException;
-import FeedStudy.StudyFeed.global.exception.exceptiontype.TokenException;
-import FeedStudy.StudyFeed.global.jwt.CustomUserDetails;
-import FeedStudy.StudyFeed.global.jwt.JwtUtil;
 import FeedStudy.StudyFeed.user.repository.BlackListRepository;
 import FeedStudy.StudyFeed.user.repository.RefreshRepository;
 import FeedStudy.StudyFeed.user.repository.UserRepository;
-import FeedStudy.StudyFeed.global.type.UserRole;
 import io.jsonwebtoken.Claims;
 import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -43,24 +44,26 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class UserService implements UserDetailsService {
+public class UserService {
 
     public final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthCodeService authCodeService;
     private final MailService mailService;
     private final JwtUtil jwtUtil;
-    private final RefreshRepository  refreshRepository;
+    private final RefreshRepository refreshRepository;
     private final BlackListRepository blackListRepository;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
 
     public void RegisterUser(String email) throws MessagingException {
 
         String authCode = authCodeService.generateAuthCode();
         authCodeService.saveAuthCode(email, authCode);
-
-
         mailService.sendVerifyMail(email, authCode);
 
+        //1. 해당되는 이메일로 인증코드를 보낸다. 보내면서 레디스에서 코드를 저장한다.
     }
 
     public void activateUser(SignUpRequestDto signUpRequestDto) {
@@ -72,7 +75,7 @@ public class UserService implements UserDetailsService {
             throw new AuthCodeException(ErrorCode.AUTH_CODE_MISMATCH);
         }
 
-        if(userRepository.existsByEmail(email)) {
+        if (userRepository.existsByEmail(email)) {
             throw new MemberException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
@@ -91,17 +94,23 @@ public class UserService implements UserDetailsService {
                 .build();
 
 
-
         userRepository.save(newUser);
     }
+    // 1. 이메일과 코드를 가지고 와서 비교하면서 코드가 틀리면 예외 발생. 이메일이 이미 존재하는 이메일일시 예외 밣생
+    // 2. 없으면 새로운 회원을 가입시킴
 
-    public Map<String, String> login(LoginRequestDto loginRequestDto) {
-        User user = userRepository.findByEmail(loginRequestDto.getEmail())
+    public Map<String, String> login(String email, String snsType, String snsId) {
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
 
-        if(!passwordEncoder.matches(loginRequestDto.getPassword(), user.getPassword())) {
+        if (!passwordEncoder.matches(snsType + snsId, user.getPassword())) {
             throw new MemberException(ErrorCode.PASSWORD_NOT_MATCH);
         }
+
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(email, snsType + snsId)
+        );
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
         String role = user.getUserRole().name();
         String accessToken = jwtUtil.createAccessToken(user.getEmail(), role);
@@ -120,11 +129,13 @@ public class UserService implements UserDetailsService {
         String token = accessToken.replace("Bearer ", ""); // Bearer 제거
 
 
-        if (!jwtUtil.validateToken(token)) {
+        Claims claims;
+        try {
+            claims = jwtUtil.validateToken(token);
+        } catch (Exception e) {
             throw new TokenException(ErrorCode.INVALID_ACCESS_TOKEN);
         }
 
-        Claims claims = jwtUtil.getClaimsFromToken(token);
         String email = claims.getSubject();
 
         log.info("✅ 삭제 전 refresh token 조회: {}", refreshRepository.findByEmail(email));
@@ -146,38 +157,30 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
-    public void fcmTokenRefresh(Long userId, String fcmToken) {
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
-
-        Boolean check = userRepository.existsByFcmToken(fcmToken);
-
-        if(!check) {
-            throw new TokenException(ErrorCode.FCM_TOKEN_NOT_FOUND);
-        }
+    public void fcmTokenRefresh(User user, String fcmToken) {
         user.setFcmToken(fcmToken);
+        userRepository.save(user);
     }
-    
-    public void makeNickName(Long userId, String nickName) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
 
-        if(user.getNickName() != null && !user.getNickName().isBlank()) {
-            return;
+    public String makeNickName(User user) {
+
+
+        String generateNickName = generateUniqueNickName();
+        return generateNickName;
+    }
+
+    public void updateNickname(User user, String nickName) {
+
+        if(userRepository.existsByIdNotAndNickName(user.getId(), nickName)) {
+//           throw new MemberException(ErrorCode.USER_NAME_IN_USE); // todo
+           throw new MemberException(ErrorCode.USER_NOT_FOUND);
+
         }
 
-        if(nickName != null && !nickName.isBlank()) {
-            if(userRepository.existsByNickName(nickName)) {
-                throw new MemberException(ErrorCode.NICKNAME_ALREADY_EXISTS);
-            }
-            user.setNickName(nickName);
-        } else {
-            String generateNickName = generateUniqueNickName();
-            user.setNickName(generateNickName);
-        }
-
+        user.setNickName(nickName);
+        userRepository.save(user);
     }
+
 
     private String generateUniqueNickName() {
         String nickname;
@@ -185,21 +188,20 @@ public class UserService implements UserDetailsService {
         do {
             nickname = NickNameUtils.generateNickname();
             attempt++;
-            if(attempt > 10) {
+            if (attempt > 10) {
                 throw new MemberException(ErrorCode.NICKNAME_GENERATION_FAILED);
             }
-        }while(userRepository.existsByNickName(nickname));
+        } while (userRepository.existsByNickName(nickname));
         return nickname;
     }
 
 
-    @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
-
-        return new CustomUserDetails(user);
+    public Boolean hasNickName(User user) {
+        return user.getNickName() != null;
     }
+
+
+
 
 
 }

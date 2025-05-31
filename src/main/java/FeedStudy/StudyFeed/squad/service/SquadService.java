@@ -3,11 +3,13 @@ package FeedStudy.StudyFeed.squad.service;
 import FeedStudy.StudyFeed.global.type.AttendanceStatus;
 import FeedStudy.StudyFeed.global.type.RecruitStatus;
 import FeedStudy.StudyFeed.squad.dto.SquadCreateRequestDto;
+import FeedStudy.StudyFeed.squad.dto.SquadJoinResponse;
 import FeedStudy.StudyFeed.squad.dto.SquadUpdateRequestDto;
 import FeedStudy.StudyFeed.global.service.RegionService;
 import FeedStudy.StudyFeed.squad.entity.Squad;
 import FeedStudy.StudyFeed.squad.entity.SquadMember;
 import FeedStudy.StudyFeed.squad.entity.SquadReport;
+import FeedStudy.StudyFeed.squad.util.ChatTokenProvider;
 import FeedStudy.StudyFeed.user.entity.User;
 
 import FeedStudy.StudyFeed.squad.repository.SquadMemberRepository;
@@ -19,21 +21,24 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class SquadService extends AbstractSquadService {
 
 
-    public SquadService(SquadRepository squadRepository, UserRepository userRepository, SquadMemberRepository squadMemberRepository, RegionService regionService, SquadReportRepository squadReportRepository) {
-        super(squadRepository, userRepository, squadMemberRepository, regionService, squadReportRepository);
+    private final ChatTokenProvider chatTokenProvider;
 
+    public SquadService(SquadRepository squadRepository, UserRepository userRepository, SquadMemberRepository squadMemberRepository, RegionService regionService, SquadReportRepository squadReportRepository, ChatTokenProvider chatTokenProvider) {
+        super(squadRepository, userRepository, squadMemberRepository, regionService, squadReportRepository);
+        this.chatTokenProvider = chatTokenProvider;
     }
 
     @Transactional
     @Override
     public void createSquad(SquadCreateRequestDto requestDto, User user) {
 
-        User leader = findByEmail(user.getEmail());
+        User leader = findUserById(user.getId());
 
         validateAgeRestriction(requestDto);
 
@@ -92,7 +97,15 @@ public class SquadService extends AbstractSquadService {
         SquadMember squadMember = SquadMember.createSquadMember(squad, newUser);
         squadMemberRepository.save(squadMember);
 
-        if (squad.getSquadAccessType() == SquadAccessType.OPEN) {
+//        if (squad.getSquadAccessType() == SquadAccessType.OPEN) {
+//            squad.setCurrentPeopleNum(squad.getCurrentPeopleNum() + 1);
+//            squadRepository.save(squad);
+//        }
+
+        if (squad.getSquadAccessType() == SquadAccessType.APPROVAL) {
+            squadMember.setAttendanceStatus(AttendanceStatus.PENDING);
+        } else {
+            squadMember.setAttendanceStatus(AttendanceStatus.APPROVED);
             squad.setCurrentPeopleNum(squad.getCurrentPeopleNum() + 1);
             squadRepository.save(squad);
         }
@@ -174,14 +187,7 @@ public class SquadService extends AbstractSquadService {
 
     public void leaveSquad(Long squadId, User user) {
 
-
-        String email = user.getEmail();
-
-
         Squad squad = findSquadById(squadId);
-
-        findByEmail(email);
-
 
         SquadMember squadMember = validateUserInSquad(squad, user);
 
@@ -227,6 +233,43 @@ public class SquadService extends AbstractSquadService {
 
         squadRepository.delete(squad);
     }
+
+    public SquadJoinResponse joinOrGetChatToken(Long squadId, User user) {
+        Squad squad = findSquadById(squadId);
+
+        Optional<SquadMember> participantOpt = squadMemberRepository.findBySquadAndUser(squad, user);
+
+        if(participantOpt.isPresent()) {
+            SquadMember squadMember = participantOpt.get();
+            validateBannedUser(squadMember);
+
+            boolean isFirstChat = !squadMember.isChatEntered();
+
+            if(isFirstChat) {
+                squadMember.setChatEntered(true);
+                squadMemberRepository.save(squadMember);
+            }
+
+            String chatToken = chatTokenProvider.createChatToken(user, squad);
+            return new SquadJoinResponse(isFirstChat ? "requested" : "joined", chatToken);
+
+        }
+
+        joinSquad(squadId, user);
+
+        SquadMember joinedMember = squadMemberRepository.findBySquadAndUser(squad, user)
+                .orElseThrow(() -> new IllegalArgumentException("참여 정보 저장 실패"));
+
+        if(joinedMember.getAttendanceStatus() == AttendanceStatus.PENDING) {
+            return new SquadJoinResponse("requested", null); // 승인대기
+        } else {
+            String chatToken = chatTokenProvider.createChatToken(user, squad);
+            return new SquadJoinResponse("joined", null); // 즉시 참여 join
+        }
+
+    }
+
+
 //
 //
 //    public boolean isAgeInRange(int userAge, Age age) {

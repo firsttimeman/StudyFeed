@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 import java.util.Arrays;
 import java.util.UUID;
@@ -15,6 +16,7 @@ import java.util.UUID;
 @Setter
 @Entity
 @NoArgsConstructor
+@ToString
 public class FeedImage extends BaseEntity {
 
     private final static String supportedExtensions[] = {"jpg", "jpeg", "png", "gif"};

@@ -2,9 +2,7 @@ package FeedStudy.StudyFeed.global.jwt;
 
 import FeedStudy.StudyFeed.global.exception.ErrorCode;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.KeyException;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.*;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -101,12 +99,21 @@ public class JwtUtil {
         return createJwt(email, role, REFRESH_TOKEN_VALIDITY_SECONDS);
     }
 
-    public boolean validateToken(String token) {
+    public Claims validateToken(String token) {
         try {
-            Jwts.parserBuilder().setSigningKey(publicKey).build().parseClaimsJws(token);
-            return true;
+            return Jwts.parserBuilder()
+                    .setSigningKey(publicKey)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (MalformedJwtException e) {
+            throw new IllegalArgumentException("토큰 형식이 잘못되었습니다.");
+        } catch (ExpiredJwtException e) {
+            throw new IllegalArgumentException("토큰이 만료되었습니다.");
+        } catch (UnsupportedJwtException e) {
+            throw new IllegalArgumentException("지원되지 않는 토큰 형식입니다.");
         } catch (Exception e) {
-            return false;
+            throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
         }
     }
 

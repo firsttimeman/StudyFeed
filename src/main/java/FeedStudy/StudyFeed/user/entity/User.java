@@ -9,8 +9,10 @@ import FeedStudy.StudyFeed.global.utils.Utils;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.*;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 
 @Entity
@@ -61,5 +63,9 @@ public class User extends BaseEntity {
 
     public int getAge() {
         return Utils.calculateAge(birthDate);
+    }
+
+    public List<SimpleGrantedAuthority> getAuthorities() {
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + this.userRole.name()));
     }
 }

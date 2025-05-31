@@ -1,28 +1,32 @@
 package FeedStudy.StudyFeed.feed.controller;
 
-import FeedStudy.StudyFeed.feed.dto.FeedCommentDto;
-import FeedStudy.StudyFeed.feed.dto.FeedCommentRequestDto;
-import FeedStudy.StudyFeed.feed.dto.FeedEditRequest;
-import FeedStudy.StudyFeed.feed.dto.FeedReportRequest;
+import FeedStudy.StudyFeed.feed.dto.*;
 import FeedStudy.StudyFeed.feed.entity.Feed;
 import FeedStudy.StudyFeed.feed.service.FeedCommentService;
 import FeedStudy.StudyFeed.feed.service.FeedLikeService;
 import FeedStudy.StudyFeed.feed.service.FeedReportService;
 import FeedStudy.StudyFeed.feed.service.FeedService;
+import FeedStudy.StudyFeed.global.dto.DataResponse;
 import FeedStudy.StudyFeed.user.entity.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/feed")
 @RequiredArgsConstructor
+@Slf4j
 public class FeedController {
     private final FeedService feedService;
     private final FeedReportService feedReportService;
@@ -34,20 +38,31 @@ public class FeedController {
      * 등록
      */
     @PostMapping
-    public ResponseEntity<String> createFeed(@AuthenticationPrincipal User user, @RequestBody FeedEditRequest request) {
+    public ResponseEntity<String> createFeed(@AuthenticationPrincipal User user, @ModelAttribute FeedEditRequest request) {
         feedService.create(user, request);
         return ResponseEntity.ok("Success");
     }
+
+    @GetMapping("/{feedId}")
+    public ResponseEntity<FeedDetailResponse> getFeedDetail(@AuthenticationPrincipal User user,
+                                                            @PathVariable Long feedId) {
+        FeedDetailResponse response = feedService.getFeedDetail(user, feedId);
+        return ResponseEntity.ok(response);
+    }
+
 
 
     /**
      * 수정
      */
-    @PutMapping("/{feedId}")
+    @PutMapping("/modify/{feedId}")
     public ResponseEntity<String> modifyFeed(@AuthenticationPrincipal User user,
                                              @PathVariable Long feedId,
-                                             @RequestBody FeedEditRequest request) {
+                                             @ModelAttribute FeedEditRequest request)  {
         feedService.modify(user, request, feedId);
+        log.info("수정 요청 도착: content={}, category={}, addImageCount={}, deleteCount={}",
+                request.getContent(), request.getCategory(),
+                request.getAddImages().size(), request.getDeletedImages().size());
         return ResponseEntity.ok("Success modify");
     }
 
@@ -57,7 +72,7 @@ public class FeedController {
     /**
      * 삭제
      */
-    @DeleteMapping("/{feedId}")
+    @DeleteMapping("/delete/{feedId}")
     public ResponseEntity<String> deleteFeed(@AuthenticationPrincipal User user, @PathVariable Long feedId) {
         feedService.delete(user, feedId);
         return ResponseEntity.ok("Success delete");
@@ -69,7 +84,12 @@ public class FeedController {
      * 모든 유저의 피드 + 차단된 유저는 제외
      */
     @GetMapping("/home")
-    public Page<Feed> getHomeFeeds(@AuthenticationPrincipal User user, Pageable pageable) {
+    public DataResponse getHomeFeeds(@AuthenticationPrincipal User user,
+                                     @PageableDefault(
+                                           sort="createdAt",
+                                           direction = Sort.Direction.DESC,
+                                           size = 10
+                                   ) Pageable pageable) {
         return feedService.getHomeFeeds(user, pageable);
     }
 
@@ -96,9 +116,9 @@ public class FeedController {
     /**
      * 댓글 달기
      */
-    @PostMapping("/AddComment")
+    @PostMapping("/createcomment")
     public ResponseEntity<?> addComment(@AuthenticationPrincipal User user,
-                                        @Valid @RequestBody FeedCommentRequestDto dto) {
+                                        @Valid @ModelAttribute FeedCommentRequestDto dto) {
         String result = feedCommentService.insertFeedComment(user, dto);
         if(result != null) {
             return ResponseEntity.ok("댓글 작성 + 알림 전송 완료");
@@ -149,7 +169,7 @@ public class FeedController {
     }
 
     @GetMapping("/{feedId}/comments/{commentId}/replies")
-    public ResponseEntity<Page<FeedCommentDto>> getReplies(@PathVariable Long feedId,
+    public ResponseEntity<Page<FeedCommentDto>> getReplies(@PathVariable("feedId") Long feedId,
                                                            @PathVariable("commentId") Long parentId,
                                                            @RequestParam(defaultValue = "0") int page,
                                                            @RequestParam(defaultValue = "2") int size) {

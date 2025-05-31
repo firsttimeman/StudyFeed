@@ -23,5 +23,5 @@ public class FeedEditRequest {
 
     private List<MultipartFile> addImages = new ArrayList<>();
 
-    private List<Integer> deletedImages = new ArrayList<>();
+    private List<Long> deletedImages = new ArrayList<>();
 }

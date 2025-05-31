@@ -1,6 +1,7 @@
 package FeedStudy.StudyFeed.squad.controller;
 
 import FeedStudy.StudyFeed.squad.dto.SquadCreateRequestDto;
+import FeedStudy.StudyFeed.squad.dto.SquadJoinResponse;
 import FeedStudy.StudyFeed.squad.dto.SquadUpdateRequestDto;
 import FeedStudy.StudyFeed.squad.service.SquadService;
 import FeedStudy.StudyFeed.user.entity.User;
@@ -59,6 +60,12 @@ public class SquadController {
         return ResponseEntity.ok("Squad leaved");
     }
 
+    @PostMapping("/{squadId}/join")
+    public ResponseEntity<String> joinSquad(@PathVariable Long squadId, @AuthenticationPrincipal User user) {
+        squadService.joinSquad(squadId, user);
+        return ResponseEntity.ok("Squad joined");
+    }
+
 
     @PostMapping("/member/{memberId}/approve")
     public ResponseEntity<String> approveMember(@PathVariable Long memberId, @AuthenticationPrincipal User user) {
@@ -88,6 +95,12 @@ public class SquadController {
                                                @RequestBody String reason) {
         squadService.reportMember(squadId, reporter, targetUserId, reason);
         return ResponseEntity.ok("신고 완료");
+    }
+
+    @PostMapping("/{squadId}/join-or-token")
+    public ResponseEntity<SquadJoinResponse> joinOrGetChatToken(@PathVariable Long squadId, @AuthenticationPrincipal User user) {
+        SquadJoinResponse response = squadService.joinOrGetChatToken(squadId, user);
+        return ResponseEntity.ok(response);
     }
 
 

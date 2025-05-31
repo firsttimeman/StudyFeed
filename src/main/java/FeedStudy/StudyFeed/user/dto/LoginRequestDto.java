@@ -4,9 +4,11 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
 @Getter
 @Setter
+@ToString
 public class LoginRequestDto {
 
 
@@ -15,5 +17,6 @@ public class LoginRequestDto {
     private String email;
 
     @NotBlank(message = "비밀번호를 반드시 입력해야 합니다.")
-    private String password;
+    private String snsId;
+    private String snsType;
 }

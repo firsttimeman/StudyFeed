@@ -37,6 +37,7 @@ public class SquadCreateRequestDto implements RegionRequest {
     private LocalTime meetTime;
 
     @Min(2)
+    @Max(30)
     private int peopleNum;
 
     @NotNull

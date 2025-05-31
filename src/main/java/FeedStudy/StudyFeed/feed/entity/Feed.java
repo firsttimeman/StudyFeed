@@ -4,10 +4,7 @@ import FeedStudy.StudyFeed.feed.dto.FeedEditRequest;
 import FeedStudy.StudyFeed.global.entity.BaseEntity;
 import FeedStudy.StudyFeed.user.entity.User;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
@@ -48,20 +45,24 @@ public class Feed extends BaseEntity {
     @OneToMany(mappedBy = "feed", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<FeedReport> reports = new ArrayList<>();
 
+    @OneToMany(mappedBy = "feed", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<FeedComment> comments = new ArrayList<>();
+
     public Feed(User user, FeedEditRequest request , List<FeedImage> images) {
         this.user = user;
+        this.content = request.getContent();
         this.category = request.getCategory();
         addImage(images);
     }
-
-    public ImageUpdatedResult update(FeedEditRequest request) {
-        this.content = request.getContent();
-        this.category = request.getCategory();
-        ImageUpdatedResult result = findImageUpdatedResult(request.getAddImages(), request.getDeletedImages());
-        addImage(result.getAddedImages());
-        deleteImages(result.getDeletedImages());
-        return result;
-    }
+//
+//    public ImageUpdatedResult update(FeedEditRequest request) {
+//        this.content = request.getContent();
+//        this.category = request.getCategory();
+//        ImageUpdatedResult result = findImageUpdatedResult(request.getAddImages(), request.getDeletedImages());
+//        addImage(result.getAddedImages());
+//        deleteImages(result.getDeletedImages());
+//        return result;
+//    }
 
 
     private void addImage(List<FeedImage> images) {
@@ -71,28 +72,33 @@ public class Feed extends BaseEntity {
         });
     }
 
-    private void deleteImages(List<FeedImage> images) {
-        images.stream().forEach(dl -> this.images.remove(dl));
-    }
+//    private void deleteImages(List<FeedImage> images) {
+//        images.stream().forEach(dl -> this.images.remove(dl));
+//    }
 
 
-    private ImageUpdatedResult  findImageUpdatedResult(List<MultipartFile> addImages, List<Integer> deletedImages) {
-        List<FeedImage> addImage = convertImageFilesToImages(addImages);
-        List<FeedImage> deleteImage = convertImageIdsToImages(deletedImages);
-        return new ImageUpdatedResult(addImages, addImage, deleteImage);
+//    private ImageUpdatedResult  findImageUpdatedResult(List<MultipartFile> addImages, List<Integer> deletedImages) {
+//        List<FeedImage> addImage = convertImageFilesToImages(addImages);
+//        List<FeedImage> deleteImage = convertImageIdsToImages(deletedImages);
+//        return new ImageUpdatedResult(addImages, addImage, deleteImage);
+//
+//    }
+//
+//    private List<FeedImage> convertImageIdsToImages(List<Integer> imagesId) {
+//        return imagesId.stream().map(id -> convertImageIdToImage(id)).filter(x -> x.isPresent()).map(x -> x.get()).toList();
+//    }
+//
+//    private Optional<FeedImage> convertImageIdToImage(int id) {
+//        return this.images.stream().filter(x -> x.getId() == id).findAny();
+//    }
 
-    }
+//    private List<FeedImage> convertImageFilesToImages(List<MultipartFile> images) {
+//       return images.stream().map(x -> new FeedImage(x.getOriginalFilename())).toList();
+//    }
 
-    private List<FeedImage> convertImageIdsToImages(List<Integer> imagesId) {
-        return imagesId.stream().map(id -> convertImageIdToImage(id)).filter(x -> x.isPresent()).map(x -> x.get()).toList();
-    }
-
-    private Optional<FeedImage> convertImageIdToImage(int id) {
-        return this.images.stream().filter(x -> x.getId() == id).findAny();
-    }
-
-    private List<FeedImage> convertImageFilesToImages(List<MultipartFile> images) {
-       return images.stream().map(x -> new FeedImage(x.getOriginalFilename())).toList();
+    public void update(String content, String category) {
+        this.content = content;
+        this.category = category;
     }
 
     public void increaseLikeCount() {
@@ -128,13 +134,13 @@ public class Feed extends BaseEntity {
 
 
 
-    @Getter
-    @AllArgsConstructor
-    public static class ImageUpdatedResult{
-        private List<MultipartFile> addedImageFiles;
-        private List<FeedImage> addedImages;
-        private List<FeedImage> deletedImages;
-    }
+//    @Getter
+//    @AllArgsConstructor
+//    public static class ImageUpdatedResult{
+//        private List<MultipartFile> addedImageFiles;
+//        private List<FeedImage> addedImages;
+//        private List<FeedImage> deletedImages;
+//    }
 
 
 }

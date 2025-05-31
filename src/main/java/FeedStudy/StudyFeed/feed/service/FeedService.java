@@ -1,8 +1,13 @@
 package FeedStudy.StudyFeed.feed.service;
 
+import FeedStudy.StudyFeed.feed.dto.FeedDetailResponse;
 import FeedStudy.StudyFeed.feed.dto.FeedEditRequest;
+import FeedStudy.StudyFeed.feed.dto.FeedSimpleDto;
 import FeedStudy.StudyFeed.feed.entity.Feed;
 import FeedStudy.StudyFeed.feed.entity.FeedImage;
+import FeedStudy.StudyFeed.feed.repository.FeedImageRepository;
+import FeedStudy.StudyFeed.feed.repository.FeedLikeRepository;
+import FeedStudy.StudyFeed.global.dto.DataResponse;
 import FeedStudy.StudyFeed.global.service.FileService;
 import FeedStudy.StudyFeed.global.service.FirebasePublisherService;
 import FeedStudy.StudyFeed.user.entity.User;
@@ -18,9 +23,11 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -30,11 +37,13 @@ import java.util.stream.IntStream;
 public class FeedService {
 
     private final FeedRepository feedRepository;
+    private final FeedImageRepository feedImageRepository;
     private final UserRepository userRepository;
     private final BlockRepository blockRepository;
     private final FirebasePublisherService firebasePublisherService;
     @Qualifier("s3FileService")
     private final FileService fileService;
+    private final FeedLikeRepository feedLikeRepository;
 
 
     public void create(User user, FeedEditRequest request) {
@@ -48,7 +57,7 @@ public class FeedService {
         Feed feed = new Feed(user, request, new ArrayList<>());
         feedRepository.save(feed);
 
-        uploadAndCreateImages(request.getAddImages(), feed);
+        feedImageRepository.saveAll(uploadAndCreateImages(request.getAddImages(), feed));
 
     }
 
@@ -70,6 +79,7 @@ public class FeedService {
 
             fileService.upload(file, fileName);
             String fullUrl = fileService.getFullUrl(fileName);
+
             FeedImage image = new FeedImage(fullUrl);
             image.initFeed(feed);
             return image;
@@ -78,20 +88,28 @@ public class FeedService {
 
     @Transactional
     public void modify(User user, FeedEditRequest request, Long feedId) {
+        System.out.println(request);
         Feed feed = feedRepository.findById(feedId)
                 .orElseThrow(() -> new FeedException(ErrorCode.FEED_NOT_FOUND));
         validateOwner(user, feed);
 //        Feed.ImageUpdatedResult update = feed.update(request);
 //        saveFeedImages(update.getAddedImages(), request.getAddImages());
 //        deleteImages(update.getDeletedImages());
+        System.out.println(feed.getImages().stream().map(i -> i.getId()).toList());
+        List<FeedImage> toDelete = feed.getImages().stream()
+                .filter(img -> request.getDeletedImages().contains(img.getId()))
+                .toList();
+        System.out.println(toDelete);
+//        deleteImages(feed.getImages());
+//        feed.getImages().clear();
+        deleteImages(toDelete);
+        feed.getImages().removeAll(toDelete); // 엔티티 연관 제거 (orphanRemoval=true 이므로 DB에서도 삭제됨)
 
-        deleteImages(feed.getImages());
-        feed.getImages().clear();
 
         List<FeedImage> newImages = uploadAndCreateImages(request.getAddImages(), feed);
         feed.getImages().addAll(newImages);
-        feed.update(request);
-
+        feed.update(request.getContent(), request.getCategory());
+        feedRepository.save(feed);
     }
 
     public Page<Feed> getMyFeeds(User user, Pageable pageable) {
@@ -108,16 +126,23 @@ public class FeedService {
         return feedRepository.findByUser(targetUser, pageable);
     }
 
-    public Page<Feed> getHomeFeeds(User user, Pageable pageable) {
+    public DataResponse getHomeFeeds(User user, Pageable pageable) {
         List<User> excludedUsers = getExcludedUsers(user);
-        return feedRepository.findByUserNotIn(excludedUsers, pageable);
+        Page<Feed> feeds;
+        if (excludedUsers.isEmpty()) {
+            feeds = feedRepository.findAll(pageable);
+        } else {
+            feeds = feedRepository.findByUserNotIn(excludedUsers, pageable);
+        }
+        List<FeedSimpleDto> feedDtos = feeds.getContent().stream().map(f -> FeedSimpleDto.toDto(f, user, hasFeedLike(user, f))).toList();
+        return new DataResponse(feedDtos, feeds.hasNext());
     }
 
 
     private List<User> getExcludedUsers(User currentUser) {
-        List<User> blockedUsers = blockRepository.findByBlocker(currentUser).stream()
+        List<User> blockedUsers = new ArrayList<>(blockRepository.findByBlocker(currentUser).stream()
                 .map(block -> block.getBlocked())
-                .toList();
+                .toList());
 
         List<User> blockedByUsers = blockRepository.findByBlocked(currentUser).stream()
                 .map(block -> block.getBlocker())
@@ -136,16 +161,42 @@ public class FeedService {
             String imageUrl = image.getImageUrl();
             String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
             fileService.delete(fileName);
+            feedImageRepository.delete(image);
         });
     }
 
+    public boolean hasFeedLike(User user, Feed feed) {
+      return feedLikeRepository.existsByUserAndFeed(user, feed); // todo 이거 사용자가 이 피드에 대해서 좋아요 버튼을 눌렀는가 아닌가를 확인하는 기능 구현
+    }
+
     private void validateOwner(User user, Feed feed) {
-        if (!user.equals(feed.getUser())) {
+        if (user.getId() != feed.getUser().getId()) {
             throw new FeedException(ErrorCode.NOT_FEED_USER);
         }
     }
 
+    @Transactional
+    public FeedDetailResponse getFeedDetail(User user, Long feedId) {
+        Feed feed = feedRepository.findByIdWithComments(feedId)
+                .orElseThrow(() -> new FeedException(ErrorCode.FEED_NOT_FOUND));
 
+        validateViewPermission(user, feed);
+
+        return FeedDetailResponse.toDto(feed);
+    }
+
+    private void validateViewPermission(User currentUser, Feed feed) {
+        User feedOwner = feed.getUser();
+
+        boolean isBlocked = blockRepository.existsByBlockerAndBlocked(currentUser, feedOwner)
+                || blockRepository.existsByBlockerAndBlocked(feedOwner, currentUser);
+
+        if (isBlocked) {
+            throw new MemberException(ErrorCode.BANNED_USER);
+        }
+    }
+
+//
 //    private void saveFeedImages(List<FeedImage> images, List<MultipartFile> addImages) {
 //        IntStream.range(0, images.size())
 //                .forEach(i -> fileService.upload(addImages.get(i), images.get(i).getUniqueName()));

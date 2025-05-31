@@ -27,6 +27,8 @@ public class SquadMember extends BaseEntity {
     @Column(nullable = false)
     private AttendanceStatus attendanceStatus;
 
+    private boolean chatEntered = false;
+
 
     public static SquadMember createSquadMember(Squad squad, User user) {
         return SquadMember.builder()

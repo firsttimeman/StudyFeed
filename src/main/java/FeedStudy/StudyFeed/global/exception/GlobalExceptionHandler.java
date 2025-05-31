@@ -22,6 +22,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AuthCodeException.class)
     public ResponseEntity<ErrorResponse> handleAuthCodeException(AuthCodeException e) {
+        System.err.println(e.getMessage());
         return buildErrorResponse(e.getErrorCode(), HttpStatus.UNAUTHORIZED);
     }
 

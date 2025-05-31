@@ -17,18 +17,20 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/user")
+@RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @Slf4j
 public class AuthController {
 
     private final UserService userService;
 
-    @PostMapping("/register")
+    @PostMapping("/signup")
     public ResponseEntity<String> register(@Valid @RequestParam String email) throws MessagingException {
         userService.RegisterUser(email);
         return ResponseEntity.ok("이메일이 보내졌습니다 이메일을 통해 인증을 완료하세요");
     }
+
+
 
     @PostMapping("/approve")
     public ResponseEntity<String> approve(@Valid @RequestBody SignUpRequestDto request) {
@@ -37,15 +39,11 @@ public class AuthController {
     }
 
 
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDto request) {
-        Map<String, String> tokens = userService.login(request);
-
+    @PostMapping("/signin")
+    public ResponseEntity<?> login(@Valid @RequestParam String email, String snsType, String snsId) {
+        Map<String, String> tokens = userService.login(email, snsType, snsId);
         return ResponseEntity.ok()
-                .header("Authorization", "Bearer " + tokens.get("accessToken"))
-                .header("Refresh-Token", tokens.get("refreshToken"))
-                .body("로그인이 완료되었습니다.");
-
+                .body(tokens);
     }
 
     @PostMapping("/testlogout")
@@ -73,15 +71,32 @@ public class AuthController {
     public ResponseEntity<String> refreshFcmToken(@RequestParam("token") String fcmToken,
                                                   @AuthenticationPrincipal User user) {
 
-        Long id = user.getId();
-
-        userService.fcmTokenRefresh(id, fcmToken);
+        System.out.println("update FCM token: " + fcmToken);
+        userService.fcmTokenRefresh(user, fcmToken);
         return ResponseEntity.ok("FCM 토큰이 재발급 되었습니다.");
     }
 
     /**
      * 닉네임 null 일시 새로 만들기
      */
+
+    @GetMapping("/generate_nickname")
+    public ResponseEntity<String> makeNickName(@AuthenticationPrincipal User user) {
+        userService.makeNickName(user);
+        return ResponseEntity.ok("NickName 생성 완료");
+    }
+
+    @PutMapping("/update_nickname")
+    public ResponseEntity<String> updateNickName(@AuthenticationPrincipal User user, @RequestParam String nickname) {
+        userService.updateNickname(user, nickname);
+        return ResponseEntity.ok("NickName 적용 완료");
+    }
+
+
+    @GetMapping("/has_nickname")
+    public ResponseEntity<Boolean> hasNickName(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(userService.hasNickName(user));
+    }
 
 
 }
