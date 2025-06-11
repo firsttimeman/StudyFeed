@@ -8,59 +8,37 @@ import FeedStudy.StudyFeed.global.exception.exceptiontype.MemberException;
 import FeedStudy.StudyFeed.block.repository.BlockRepository;
 import FeedStudy.StudyFeed.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
-public class BlockService extends AbstractBlockService {
+@RequiredArgsConstructor
+public class BlockService   {
 
-    public BlockService(BlockRepository blockRepository, UserRepository userRepository) {
-        super(blockRepository, userRepository);
-    }
+    private final BlockRepository blockRepository;
 
 
     @Transactional
-    public boolean updateBlock(User blocker, Long blockedId) {
+    public void createBlock(User user, User other) {
 
-        User blockedUser = findByUserId(blockedId);
-
-        if (!hasBlock(blockedUser, blocker)) {
-            createBlock(blocker, blockedUser);
-            return true;
-        } else {
-            removeBlock(blocker, blockedUser);
-            return false;
+        if(blockRepository.findByBlockerAndBlocked(user, other).isPresent()) {
+            throw new IllegalArgumentException("이미 차단된 사용자 입니다.");
         }
-    }
 
-    private void removeBlock(User blocker, User blockedUser) {
-        blockRepository.findByBlockerAndBlocked(blocker, blockedUser)
-                .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
-    }
+        if(user.getId() == other.getId()) {
+            throw new IllegalArgumentException("자기 자신을 차단할수 없습니다.");
+        }
 
-    private void createBlock(User blocker, User blockedUser) {
-        blockRepository.save(new Block(blocker, blockedUser));
-    }
-
-    private boolean hasBlock(User blockedUser, User blocker) {
-        return blockRepository.existsByBlockerAndBlocked(blockedUser, blocker);
-    }
-
-
-
-    @Transactional
-    public void createBlock(User blocker, Long blockedId) {
-
-        User blocked = findByUserId(blockedId);
-
-        blockRepository.save(new Block(blocker, blocked));
+        Block block = new Block(user, other);
+        blockRepository.save(block);
     }
 
     @Transactional
-    public void removeBlock(User blocker, Long blockedId) {
-        User blocked = findByUserId(blockedId);
-        Block block = findByBlockerAndBlocked(blocker, blocked);
+    public void removeBlock(User user, User other) {
+        Block block = blockRepository.findByBlockerAndBlocked(user, other)
+                .orElseThrow(() -> new IllegalArgumentException("차단되어 있지 않습니다."));
 
         blockRepository.delete(block);
     }

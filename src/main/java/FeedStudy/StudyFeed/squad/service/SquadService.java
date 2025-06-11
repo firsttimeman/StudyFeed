@@ -1,227 +1,273 @@
 package FeedStudy.StudyFeed.squad.service;
 
+import FeedStudy.StudyFeed.block.repository.BlockRepository;
+import FeedStudy.StudyFeed.global.dto.DataResponse;
+import FeedStudy.StudyFeed.global.jwt.JwtUtil;
+import FeedStudy.StudyFeed.global.service.FirebaseMessagingService;
 import FeedStudy.StudyFeed.global.type.AttendanceStatus;
-import FeedStudy.StudyFeed.global.type.RecruitStatus;
-import FeedStudy.StudyFeed.squad.dto.SquadCreateRequestDto;
-import FeedStudy.StudyFeed.squad.dto.SquadJoinResponse;
-import FeedStudy.StudyFeed.squad.dto.SquadUpdateRequestDto;
-import FeedStudy.StudyFeed.global.service.RegionService;
+import FeedStudy.StudyFeed.global.type.SquadAccessType;
+import FeedStudy.StudyFeed.squad.dto.SquadDetailDto;
+import FeedStudy.StudyFeed.squad.dto.SquadFilterRequest;
+import FeedStudy.StudyFeed.squad.dto.SquadRequest;
+import FeedStudy.StudyFeed.squad.dto.SquadSimpleDto;
 import FeedStudy.StudyFeed.squad.entity.Squad;
 import FeedStudy.StudyFeed.squad.entity.SquadMember;
-import FeedStudy.StudyFeed.squad.entity.SquadReport;
-import FeedStudy.StudyFeed.squad.util.ChatTokenProvider;
-import FeedStudy.StudyFeed.user.entity.User;
-
 import FeedStudy.StudyFeed.squad.repository.SquadMemberRepository;
-import FeedStudy.StudyFeed.squad.repository.SquadReportRepository;
 import FeedStudy.StudyFeed.squad.repository.SquadRepository;
+import FeedStudy.StudyFeed.squad.util.ChatTokenProvider;
+import FeedStudy.StudyFeed.user.dto.UserSimpleDto;
+import FeedStudy.StudyFeed.user.entity.User;
 import FeedStudy.StudyFeed.user.repository.UserRepository;
-import FeedStudy.StudyFeed.global.type.SquadAccessType;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
-public class SquadService extends AbstractSquadService {
+public class SquadService extends ASquadService {
 
 
+    private final JwtUtil jwtUtil;
     private final ChatTokenProvider chatTokenProvider;
 
-    public SquadService(SquadRepository squadRepository, UserRepository userRepository, SquadMemberRepository squadMemberRepository, RegionService regionService, SquadReportRepository squadReportRepository, ChatTokenProvider chatTokenProvider) {
-        super(squadRepository, userRepository, squadMemberRepository, regionService, squadReportRepository);
+    public SquadService(SquadRepository squadRepository, UserRepository userRepository, SquadMemberRepository squadMemberRepository, FirebaseMessagingService firebaseMessagingService, BlockRepository blockRepository, JwtUtil jwtUtil, ChatTokenProvider chatTokenProvider) {
+        super(squadRepository, userRepository, squadMemberRepository, firebaseMessagingService, blockRepository);
+        this.jwtUtil = jwtUtil;
         this.chatTokenProvider = chatTokenProvider;
     }
 
+
     @Transactional
-    @Override
-    public void createSquad(SquadCreateRequestDto requestDto, User user) {
+    public void createSquad(SquadRequest req, User user) {
 
-        User leader = findUserById(user.getId());
+        Squad squad = Squad.create(user ,req);
+        squad = squadRepository.save(squad);
 
-        validateAgeRestriction(requestDto);
-
-        Squad squad = Squad.build(requestDto, leader);
-
-        squadRepository.save(squad);
-
-        SquadMember squadMember = SquadMember.createSquadMember(squad, leader);
-
+        SquadMember squadMember = SquadMember.create(user, squad);
         squadMemberRepository.save(squadMember);
 
     }
 
-    @Override
-    public void updateSquad(Long squadId, User user, SquadUpdateRequestDto requestDto) {
+    public void updateSquad(Long squadId, User user, SquadRequest req) {
+        Squad squad = findSquad(squadId);
 
-        Squad squad = findSquadById(squadId);
+        validateOwner(user, squad);
 
+        validateAgeRange(squad, req);
 
-        validateSquadLeader(squad, user);
+        validateGender(squad, req);
 
-        regionService.checkRegion(requestDto);
+        validateMemberCount(squad, req);
 
-        squad.update(requestDto);
+        squad.update(req);
 
     }
 
     @Transactional
-    @Override
+    public void deleteSquad(Long squadId, User user, boolean isForcedDelete) {
 
-    public void deleteSquad(Long squadId, User user) {
-
-        Squad squad = findSquadById(squadId);
-
-        validateSquadLeader(squad, user);
-
+        Squad squad = findSquad(squadId);
+        validateOwner(user, squad);
+        validateDeleteMember(squad, isForcedDelete);
+        List<SquadMember> members = squad.getMembers();
+        squad.getMembers().clear();
+        squadMemberRepository.deleteAll(members);
         squadRepository.delete(squad);
     }
 
-    @Transactional // todo 더 줄일수 있는지 시도해보기
-    @Override
+    public DataResponse mySquad(User user, Pageable pageable) {
+        Page<Squad> squads = squadRepository.findByUser(user, pageable);
+        List<SquadSimpleDto> squadDtos = squads.getContent().stream().map(SquadSimpleDto::toDto).toList();
+        return new DataResponse(squadDtos, squads.hasNext());
 
-    public void joinSquad(Long squadId, User newUser) {
-        Squad squad = findSquadById(squadId);
+    }
 
-        IsBannedChecked(squad, newUser);
-        validateBySquadAndUser(squad, newUser);
-        validatePeopleNum(squad);
-        validateGender(squad, newUser);
+    public Map<String, String> joinOrGetChatToken(User user, Long squadId) {
 
-        int userAge = newUser.getAge();
+        Squad squad = squadRepository.findByIdWithParticipants(squadId)
+                .orElseThrow(() -> new IllegalArgumentException("모임이 존재하지 않습니다"));
 
-        validateMinAge(squad, userAge);
-        validateMaxAge(squad, userAge);
+        Optional<SquadMember> members = squadMemberRepository.findBySquadAndUser(squad, user);
 
-        SquadMember squadMember = SquadMember.createSquadMember(squad, newUser);
-        squadMemberRepository.save(squadMember);
+        if(members.isPresent()) {
+            SquadMember squadMember = members.get();
 
-//        if (squad.getSquadAccessType() == SquadAccessType.OPEN) {
-//            squad.setCurrentPeopleNum(squad.getCurrentPeopleNum() + 1);
-//            squadRepository.save(squad);
-//        }
+            if(squadMember.getAttendanceStatus() == AttendanceStatus.JOINED) {
+                String chatToken = chatTokenProvider.createChatToken(user, squad);
+                return Map.of("status", "joined", "chatToken", chatToken);
+            }
 
-        if (squad.getSquadAccessType() == SquadAccessType.APPROVAL) {
-            squadMember.setAttendanceStatus(AttendanceStatus.PENDING);
+            if(squadMember.getAttendanceStatus() == AttendanceStatus.PENDING) {
+                return Map.of("status", "pending");
+            }
+
+            if(squadMember.getAttendanceStatus() == AttendanceStatus.REJECTED) {
+                throw new IllegalArgumentException("참여가 거절된 모임입니다.");
+            }
+
+            if(squadMember.getAttendanceStatus() == AttendanceStatus.KICKED_OUT) {
+                throw new IllegalArgumentException("강제 퇴장된 유저입니다.");
+            }
+        }
+
+        joinSquad(user, squad);
+
+        return Map.of("status", squad.getSquadAccessType().equals(SquadAccessType.APPROVAL) ? "requested" : "approved");
+    }
+
+
+
+    public DataResponse homeSquad(User user, Pageable pageable, SquadFilterRequest req) {
+
+        List<User> excludedUser = new ArrayList<>();
+        if(user != null) {
+            excludedUser = getExcludedUsers(user);
+        }
+        Page<Squad> squads;
+
+        if(excludedUser.isEmpty()) {
+          squads = squadRepository.findFilteredSquads(req.getCategory(), req.getRegionMain(),
+                    req.getRegionSub(), req.isRecruitingOnly(), pageable);
+
         } else {
-            squadMember.setAttendanceStatus(AttendanceStatus.APPROVED);
-            squad.setCurrentPeopleNum(squad.getCurrentPeopleNum() + 1);
-            squadRepository.save(squad);
+            squads = squadRepository.findFilteredSquadsWithExclusion(req.getCategory(), req.getRegionMain(),
+                    req.getRegionSub(), req.isRecruitingOnly(), excludedUser, pageable);
+        }
+        return new DataResponse(squads.getContent().stream().map(SquadSimpleDto::toDto).toList(), squads.hasNext());
+    }
+
+    public SquadDetailDto detail(User user, long squadId) {
+        Squad squad = findSquad(squadId);
+        return SquadDetailDto.toDto(user, squad);
+    }
+
+    public List<UserSimpleDto> getParticipants(User user, Long squadId) {
+        Squad squad = squadRepository.findById(squadId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 모임을 찾을 수 없습니다."));
+
+        if (squad.getSquadAccessType().equals(SquadAccessType.DIRECT)) {
+            throw new AccessDeniedException("승인제가 아닙니다.");
+        }
+        if (user.getId() != squad.getUser().getId()) {
+            throw new IllegalArgumentException("스쿼드 장이 아닙니다.");
+        }
+        return squad.getMembers().stream()
+                .filter(member -> member.getAttendanceStatus() == AttendanceStatus.PENDING)
+                .map(members -> UserSimpleDto.toDto(members.getUser()))
+                .collect(Collectors.toList());
+    }
+
+
+    public void closeSquad(User user, Long squadId) {
+        Squad squad = findSquad(squadId);
+
+        validateOwner(user, squad);
+        squad.setClosed(true);
+        squadRepository.save(squad);
+    }
+
+
+    public void joinSquad(User user, Squad squad) {
+        validateAlreadyJoined(user, squad);
+        validateIsClosed(squad);
+        validateTimePassed(squad);
+        validateFullJoined(squad);
+        validateGender(user ,squad);
+        validateAgeRange(user , squad);
+
+        SquadMember squadMember = SquadMember.create(user, squad);
+        squadMember = squadMemberRepository.save(squadMember);
+        squad.joinParticipant(squadMember);
+        squadRepository.save(squad);
+
+        // firebase 알람 처리
+        String fcmToken = squad.getUser().getFcmToken();
+        boolean feedAlarm = squad.getUser().getFeedAlarm();
+        String title = "모임에 새로운 멤버가 참여했습니다.";
+        String content = String.format("회원님의 모임글 [%s]에 새로운 멤버가 참여했습니다.",
+                squad.getTitle().substring(0, Math.min(20, squad.getTitle().length())));
+        String data = squad.getId() + ",squad";
+        firebaseMessagingService.sendCommentNotification(feedAlarm, fcmToken, title, content, data);
+    }
+
+
+
+    public void approveParticipant(User user, Long userId, Long squadId) {
+        Squad squad = findSquad(squadId);
+        User members = findUser(userId);
+
+        if (squad.getUser().getId() != user.getId()) {
+            throw new IllegalArgumentException("방장이 아닙니다. 승인 권한이 없습니다.");
         }
 
-    }
-
-    @Transactional
-    @Override
-
-    public void approveMember(Long squadMemberId, User user) {
-        SquadMember squadMember = findSquadMemberById(squadMemberId);
-
-        Squad squad = squadMember.getSquad();
-
-        validateSquadLeader(squad, user);
-        validateStatus(squadMember);
-        validatePeopleNum(squad);
-
-        squadMember.setAttendanceStatus(AttendanceStatus.APPROVED);
-        squadMemberRepository.save(squadMember);
-
-        squad.setCurrentPeopleNum(squad.getCurrentPeopleNum() + 1);
-        squadRepository.save(squad);
-    }
-
-    @Transactional
-    @Override
-    public void rejectMember(Long squadMemberId, User user) {
-        SquadMember squadMember = findSquadMemberById(squadMemberId);
-        Squad squad = squadMember.getSquad();
-
-        validateSquadLeader(squad, user);
-        validateTargetIsLeader(squad, squadMember);
-
-        squadMember.rejected();
-
-        squadMemberRepository.save(squadMember);
-    }
-
-
-    @Transactional
-    @Override
-
-    public void closeRecruitment(Long squadId, User user) {
-        Squad squad = findSquadById(squadId);
-
-        validateSquadLeader(squad, user);
-        validateCheckClosed(squad);
-
-        squad.setRecruitStatus(RecruitStatus.CLOSED);
-        squad.setPeopleNum(squad.getCurrentPeopleNum());
-
-        squadRepository.save(squad);
-    }
-
-
-    @Transactional
-    @Override
-    public void kickMember(Long squadId, User leader, Long targetId) {
-        Squad squad = findSquadById(squadId);
-
-        validateSquadLeader(squad, leader);
-
-        User user = findUserById(targetId);
-
-        SquadMember squadMember = validateUserInSquad(squad, user);
-
-        validateBannedUser(squadMember);
-
-        squadMember.setAttendanceStatus(AttendanceStatus.BANNED);
-        squadMemberRepository.save(squadMember);
-
-        squad.decreasingCurrentPeopleNum();
-        squadRepository.save(squad);
-    }
-
-    @Transactional
-    @Override
-
-    public void leaveSquad(Long squadId, User user) {
-
-        Squad squad = findSquadById(squadId);
-
-        SquadMember squadMember = validateUserInSquad(squad, user);
-
-        if (squad.getLeader().equals(user)) {
-            disbannedSquad(squad);
-            return;
+        if(squad.getMembers().stream()
+                .filter(member -> member.getAttendanceStatus() == AttendanceStatus.JOINED)
+                .count() >= squad.getMaxParticipants()) {
+            throw new IllegalArgumentException("참여 인원이 찼습니다.");
         }
 
-        squadMember.setAttendanceStatus(AttendanceStatus.WITHDRAW);
+        SquadMember squadMember = squad.getMembers().stream().filter(m -> m.getUser() == members)
+                .findAny().orElseThrow();
+        squadMember.setAttendanceStatus(AttendanceStatus.JOINED);
         squadMemberRepository.save(squadMember);
 
-        squad.setCurrentPeopleNum(squad.getCurrentPeopleNum() - 1);
-
-        squadRepository.save(squad);
     }
 
-    @Transactional
-    @Override
-    public void reportMember(Long squadId, User reporter, Long reportedId, String reason) {
-        Squad squad = findSquadById(squadId);
-        User reportedUser = findUserById(reportedId);
+    public void rejectParticipant(User user, Long userId, Long squadId) {
+        Squad squad = findSquad(squadId);
 
-        validateReporter(reporter, reportedUser);
-        validateReporterAndUserAndSquad(reporter, reportedUser, squad);
+        User members = findUser(userId);
 
-        SquadReport report = SquadReport.createSquadReport(reporter, reportedUser, squad, reason);
-        squadReportRepository.save(report);
-
-        long reportCount = squadReportRepository.countBySquadAndReportedUser(squad, reportedUser);
-        if (reportCount >= 3) {
-            kickMember(squadId, reporter, reportedId);
+        if (squad.getUser().getId() != user.getId()) {
+            throw new IllegalArgumentException("방장이 아닙니다. 승인 권한이 없습니다.");
         }
 
+        SquadMember squadMember = squad.getMembers().stream().filter(m -> m.getUser() == members)
+                .findAny().orElseThrow();
+        squadMember.setAttendanceStatus(AttendanceStatus.REJECTED);
+        squadMemberRepository.save(squadMember);
     }
+
+    public void kickOffParticipant(User user, Long userId, Long squadId) {
+        Squad squad = findSquad(squadId);
+
+        User members = findUser(userId);
+
+        if (squad.getUser().getId() != user.getId()) {
+            throw new IllegalArgumentException("방장이 아닙니다. 승인 권한이 없습니다.");
+        }
+
+        SquadMember participant = squad.getMembers().stream().filter(m -> m.getUser() == members)
+                .findAny().orElseThrow();
+        participant.setAttendanceStatus(AttendanceStatus.KICKED_OUT);
+        squad.decreaseCurrentCount();
+        squadRepository.save(squad);
+        squadMemberRepository.save(participant);
+    }
+
+    public void kickOffParticipant(User user, Long squadId) {
+        Squad squad = findSquad(squadId);
+
+        SquadMember squadMember = squad.getMembers().stream()
+                .filter(m -> m.getUser().getId() == user.getId())
+                .findAny().orElseThrow();
+        squad.getMembers().remove(squadMember);
+        squadMemberRepository.delete(squadMember);
+    }
+
+
+
+
+
+
+
 
 
     @Transactional
@@ -234,47 +280,14 @@ public class SquadService extends AbstractSquadService {
         squadRepository.delete(squad);
     }
 
-    public SquadJoinResponse joinOrGetChatToken(Long squadId, User user) {
-        Squad squad = findSquadById(squadId);
 
-        Optional<SquadMember> participantOpt = squadMemberRepository.findBySquadAndUser(squad, user);
-
-        if(participantOpt.isPresent()) {
-            SquadMember squadMember = participantOpt.get();
-            validateBannedUser(squadMember);
-
-            boolean isFirstChat = !squadMember.isChatEntered();
-
-            if(isFirstChat) {
-                squadMember.setChatEntered(true);
-                squadMemberRepository.save(squadMember);
-            }
-
-            String chatToken = chatTokenProvider.createChatToken(user, squad);
-            return new SquadJoinResponse(isFirstChat ? "requested" : "joined", chatToken);
-
-        }
-
-        joinSquad(squadId, user);
-
-        SquadMember joinedMember = squadMemberRepository.findBySquadAndUser(squad, user)
-                .orElseThrow(() -> new IllegalArgumentException("참여 정보 저장 실패"));
-
-        if(joinedMember.getAttendanceStatus() == AttendanceStatus.PENDING) {
-            return new SquadJoinResponse("requested", null); // 승인대기
-        } else {
-            String chatToken = chatTokenProvider.createChatToken(user, squad);
-            return new SquadJoinResponse("joined", null); // 즉시 참여 join
-        }
-
-    }
 
 
 //
 //
 //    public boolean isAgeInRange(int userAge, Age age) {
 //        return switch (age) {
-//            case TEEN -> userAge >= 10 && userAge < 20;
+//            case TEEN -> userAge >= 10 && userAge < 20;e
 //            case TWENTIES -> userAge >= 20 && userAge < 30;
 //            case THIRTIES -> userAge >= 30 && userAge < 40;
 //            case FORTIES -> userAge >= 40 && userAge < 50;
@@ -283,15 +296,23 @@ public class SquadService extends AbstractSquadService {
 //        };
 //    }
 
-    private boolean IsBannedChecked(Squad squad, User user) {
 
-        if (squadMemberRepository.existsBySquadAndUserAndAttendanceStatus(squad, user, AttendanceStatus.BANNED)) {
-            throw new IllegalArgumentException("이미 강퇴된 유저입니다.");
-        }
 
-        return true;
+
+
+    private List<User> getExcludedUsers(User currentUser) {
+        List<User> blockedUsers = new ArrayList<>(blockRepository.findByBlocker(currentUser).stream()
+                .map(block -> block.getBlocked())
+                .toList());
+
+        List<User> blockedByUsers = blockRepository.findByBlocked(currentUser).stream()
+                .map(block -> block.getBlocker())
+                .toList();
+
+        blockedUsers.addAll(blockedByUsers);
+        return blockedUsers.stream().distinct().toList();
+
     }
-
 
 }
 

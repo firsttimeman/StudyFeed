@@ -10,9 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -20,7 +18,11 @@ public class FirebasePublisherService {
     private final FirebaseMessaging fcm;
 
     public String postToTopic(PushRequest pushRequest, String topic) throws FirebaseMessagingException {
-        Notification notification = Notification.builder().setTitle(pushRequest.getTitle()).setBody(pushRequest.getBody()).build();
+        Notification notification = Notification.builder()
+                .setTitle(pushRequest.getTitle())
+                .setBody(pushRequest.getBody())
+                .build();
+
         Message msg = Message.builder()
                 .setTopic(topic)
                 .setNotification(notification)
@@ -32,12 +34,24 @@ public class FirebasePublisherService {
         //특정 토픽을 구독한 사람 todo 한번더 찾아보기
     }
 
-    public String postToClient(String title, String message, String registrationToken) throws FirebaseMessagingException {
-        Notification notification = Notification.builder().setTitle(title).setBody(message).build();
+    public String postToClient(String title, String message, String data, String registrationToken) throws FirebaseMessagingException {
+
+        String[] pushData = data.split(",");
+        Map<String, String> dataMap = new HashMap<>();
+        dataMap.put("id", pushData[0]);
+        dataMap.put("type", pushData[1]);
+
+
+        Notification notification = Notification
+                .builder()
+                .setTitle(title)
+                .setBody(message)
+                .build();
+
         Message msg = Message.builder()
                 .setToken(registrationToken)
                 .setNotification(notification)
-                .putData("body", message)
+                .putAllData(dataMap)
                 .build();
 
         String id = fcm.send(msg);

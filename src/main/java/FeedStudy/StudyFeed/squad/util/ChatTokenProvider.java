@@ -25,7 +25,6 @@ public class ChatTokenProvider {
         return Jwts.builder()
                 .setSubject(user.getId().toString())
                 .claim("sqaudId", squad.getId())
-                .claim("nickname", user.getNickName())
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(SignatureAlgorithm.HS256, secretKey.getBytes())

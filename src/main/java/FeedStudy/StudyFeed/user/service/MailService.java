@@ -13,7 +13,7 @@ public class MailService {
     private final JavaMailSender mailSender;
     private static final String SENDER_EMAIL = "sangwha0@gmail.com";
 
-    public MimeMessage createMail(String receiver, String authCode) throws MessagingException {
+    private MimeMessage createMail(String receiver, String authCode) throws MessagingException {
         MimeMessage mimeMessage = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
 

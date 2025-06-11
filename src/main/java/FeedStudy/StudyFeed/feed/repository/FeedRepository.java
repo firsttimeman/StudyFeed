@@ -20,4 +20,9 @@ public interface FeedRepository extends JpaRepository<Feed, Long> {
 
     @Query("select distinct f from Feed f left join fetch f.comments where f.id = :feedId")
     Optional<Feed> findByIdWithComments(@Param("feedId") Long feedId);
+
+    Page<Feed> findByCategoryAndUserNotIn(String category, Iterable<User> users, Pageable pageable);
+
+    Page<Feed> findAllByCategory(String category, Pageable pageable);
+
 }

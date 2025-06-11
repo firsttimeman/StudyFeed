@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface FeedCommentRepository extends JpaRepository<FeedComment, Long> {
@@ -16,5 +17,5 @@ public interface FeedCommentRepository extends JpaRepository<FeedComment, Long> 
 
     List<FeedComment> findByParentId(Long parentId, Sort sort);
 
-
+    Optional<FeedComment> findByParentCommentIdAndId(Long parentId, Long userId);
 }

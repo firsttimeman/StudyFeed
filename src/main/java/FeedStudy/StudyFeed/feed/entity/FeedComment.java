@@ -5,6 +5,9 @@ import FeedStudy.StudyFeed.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter
 @Setter
@@ -21,12 +24,25 @@ public class FeedComment extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_id")
-    private FeedComment parent;
-
     @Lob
     @Column(nullable = false)
-    private String comment;
+    private String content;
+
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private FeedComment parentComment;
+
+    @OneToMany(mappedBy = "parentComment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<FeedComment> childComments = new ArrayList<>();
+
+    public FeedComment(User user, Feed feed, String content, FeedComment parentComment) {
+        this.user = user;
+        this.feed = feed;
+        this.content = content;
+        this.parentComment = parentComment;
+    }
+
+
 
 }

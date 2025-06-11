@@ -26,7 +26,7 @@ public class FeedSimpleDto {
     private Boolean isMine;
     private String datetime;
 
-    public static FeedSimpleDto toDto(Feed feed, User user, boolean isLike) {
+    public static FeedSimpleDto toDto(Feed feed, Long userId, boolean isLike) {
         Long id = feed.getId();
         String nickname = feed.getUser().getNickName();
         String profileImageUrl = "";
@@ -35,9 +35,10 @@ public class FeedSimpleDto {
         List<String> images = feed.getImages().stream().map(i -> i.getImageUrl()).toList();
         Integer likeCount = feed.getLikeCount();
         Integer commentCount = feed.getCommentCount();
-        Boolean isMine = feed.getUser().getId() == user.getId();
+        Boolean isMine = feed.getUser().getId() == userId;
         String datetime = feed.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-        return new FeedSimpleDto(id, nickname, profileImageUrl, category, content, images, isLike, likeCount, commentCount, isMine, datetime);
+        return new FeedSimpleDto(id, nickname, profileImageUrl, category, content,
+                images, isLike, likeCount, commentCount, isMine, datetime);
     }
 }

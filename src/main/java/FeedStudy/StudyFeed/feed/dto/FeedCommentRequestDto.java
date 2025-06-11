@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 public class FeedCommentRequestDto {
 
-    private Long commentId;
+    private Long feedCommentId;
 
     @NotNull
     private String comment;

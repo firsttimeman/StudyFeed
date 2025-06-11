@@ -1,4 +1,4 @@
-package FeedStudy.StudyFeed.user.service;
+package FeedStudy.StudyFeed.auth.service;
 
 import FeedStudy.StudyFeed.global.exception.exceptiontype.AuthCodeException;
 import FeedStudy.StudyFeed.global.exception.ErrorCode;
@@ -62,8 +62,15 @@ public class AuthCodeService {
             return true;
         }
 
-
-
         return false;
+    }
+
+    public String getAuthCode(String email) {
+        return redisTemplate.opsForValue().get("authCode: " + email);
+    }
+
+    public void removeAuthCode(String email) {
+        redisTemplate.delete("authCode:" + email);
+        redisTemplate.delete("emailByAuthCode:" + redisTemplate.opsForValue().get("authCode:" + email));
     }
 }

@@ -1,5 +1,6 @@
 package FeedStudy.StudyFeed.user.service;
 
+import FeedStudy.StudyFeed.auth.service.AuthCodeService;
 import FeedStudy.StudyFeed.global.exception.ErrorCode;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.AuthCodeException;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.MemberException;
@@ -7,12 +8,12 @@ import FeedStudy.StudyFeed.global.exception.exceptiontype.TokenException;
 import FeedStudy.StudyFeed.global.jwt.JwtUtil;
 import FeedStudy.StudyFeed.global.type.UserRole;
 import FeedStudy.StudyFeed.global.utils.NickNameUtils;
-import FeedStudy.StudyFeed.user.dto.LoginRequestDto;
 import FeedStudy.StudyFeed.user.dto.SignUpRequestDto;
 import FeedStudy.StudyFeed.user.entity.User;
 import FeedStudy.StudyFeed.user.repository.BlackListRepository;
 import FeedStudy.StudyFeed.user.repository.RefreshRepository;
 import FeedStudy.StudyFeed.user.repository.UserRepository;
+import com.google.api.pathtemplate.ValidationException;
 import io.jsonwebtoken.Claims;
 import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
@@ -201,7 +202,12 @@ public class UserService {
     }
 
 
-
-
-
+    public String limitNickname(String nickname) {
+        String regex = "^[a-zA-Z0-9가-힣\\s]{2,8}$";
+        if (!nickname.matches(regex)) {
+            throw new ValidationException("올바르지 않은 형식의 이름입니다");
+        } else {
+            return "올바른 형식의 이름입니다";
+        }
+    }
 }

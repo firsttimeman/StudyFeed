@@ -11,17 +11,14 @@ public class FirebaseMessagingService {
 
     private final FirebasePublisherService publisherService;
 
-    public String sendCommentNotification(User targetUser, String title, String content) {
-        String fcmToken = targetUser.getFcmToken();
-
-        if (targetUser.getReceiveFeedAlarm() && fcmToken != null) {
+    public String sendCommentNotification(boolean isAlarm, String token, String title, String content, String data) {
+        if (isAlarm && token != null) {
             try {
-                return publisherService.postToClient(title, content, fcmToken);
+                return publisherService.postToClient(title, content, data, token);
             } catch (FirebaseMessagingException e) {
-                throw new RuntimeException("푸시 알림 발송이 실패했습니다.", e);
+                e.printStackTrace();
             }
         }
-
         return null;
 
     }

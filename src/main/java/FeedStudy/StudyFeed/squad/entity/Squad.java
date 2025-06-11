@@ -1,16 +1,19 @@
 package FeedStudy.StudyFeed.squad.entity;
 
 import FeedStudy.StudyFeed.global.type.*;
-import FeedStudy.StudyFeed.squad.dto.SquadCreateRequestDto;
-import FeedStudy.StudyFeed.squad.dto.SquadUpdateRequestDto;
+import FeedStudy.StudyFeed.squad.dto.SquadRequest;
 import FeedStudy.StudyFeed.global.entity.BaseEntity;
 import FeedStudy.StudyFeed.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Entity
 @Getter
@@ -20,48 +23,22 @@ import java.util.List;
 @AllArgsConstructor
 public class Squad extends BaseEntity {
 
-
-    @Column(nullable = false, unique = true)
-    private String squadName;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "leader_id", nullable = false)
-    private User leader;
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private User user;
+
+
+    private String title, category, regionMain, regionSub;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Topic topic;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private RecruitStatus recruitStatus;
+    private Gender genderRequirement;
 
     @Column(nullable = false)
-    private int peopleNum;
+    private boolean timeSpecified;
 
-    //todo 추가된 항목
-    @Column(nullable = false)
-    private int currentPeopleNum;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private SquadGender squadGender;
-
-    @OneToMany(mappedBy = "squad", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<SquadMember> members;
-
-    @Lob
-    private String description;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private SquadAccessType squadAccessType;
-
-    @Column(nullable = false)
-    private String regionMain;
-
-    @Column(nullable = true)
-    private String regionSub;
+    private int maxParticipants, minAge, maxAge;
 
     @Column(nullable = false)
     private LocalDate meetDate;
@@ -69,58 +46,111 @@ public class Squad extends BaseEntity {
     @Column(nullable = false)
     private LocalTime meetTime;
 
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = true)
-    private Age age;
+    @Column(nullable = false)
+    private SquadAccessType squadAccessType = SquadAccessType.APPROVAL;
+
+    @Lob
+    private String description;
 
     @Column(nullable = true)
-    private Integer minAge; // 직접 입력한 연령대
+    private int currentCount = 1;
 
     @Column(nullable = true)
-    private Integer maxAge;
+    private int reportCount = 0;
 
 
+    @OneToMany(mappedBy = "squad", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SquadMember> members = new ArrayList<>();
 
-    public void update(SquadUpdateRequestDto requestDto) {
-        Squad.builder()
-                .squadName(requestDto.getSquadName())
-                .topic(requestDto.getTopic())
-                .peopleNum(requestDto.getPeopleNum())
-                .squadGender(requestDto.getSquadGender())
-                .meetDate(requestDto.getMeetDate())
-                .meetTime(requestDto.getMeetTime())
-                .minAge(requestDto.getMinAge())
-                .maxAge(requestDto.getMaxAge())
-                .squadAccessType(requestDto.getSquadAccessType())
-                .regionMain(requestDto.getRegionMain())
-                .regionSub(requestDto.getRegionSub())
-                .description(requestDto.getDescription())
-                .build();
+
+    @Column(nullable = false)
+    private boolean closed = false;
+
+    @Column
+    private boolean notifySent = false;
+
+
+    @Builder
+    private Squad(User user, SquadRequest req) {
+        this.user = user;
+        this.category = req.getCategory();
+        this.title = req.getTitle();
+        this.description = req.getDescription();
+        this.regionMain = req.getRegionMain();
+        this.regionSub = req.getRegionSub();
+        this.timeSpecified = (req.getTimeSpecified() != null) ? req.getTimeSpecified() : false;
+        if(Boolean.TRUE.equals(req.getTimeSpecified())){
+            this.meetTime = req.getMeetTime();
+        }
+        this.genderRequirement = req.getGenderRequirement();
+        this.squadAccessType = Optional.ofNullable(req.getSquadAccessType()).orElse(SquadAccessType.APPROVAL);
+        this.maxParticipants = req.getMaxParticipants();
+        this.minAge = req.getMinAge();
+        this.maxAge = req.getMaxAge();
+        this.meetDate = req.getMeetDate();
     }
 
-    public static Squad build(SquadCreateRequestDto requestDto, User leader) {
-        return Squad.builder()
-                .squadName(requestDto.getSquadName())
-                .leader(leader)
-                .recruitStatus(RecruitStatus.OPEN)
-                .topic(requestDto.getTopic())
-                .maxAge(requestDto.getMaxAge())
-                .minAge(requestDto.getMinAge())
-                .squadAccessType(requestDto.getSquadAccessType())
-                .meetDate(requestDto.getMeetDate())
-                .meetTime(requestDto.getMeetTime())
-                .description(requestDto.getDescription())
-                .currentPeopleNum(1)
-                .peopleNum(requestDto.getPeopleNum())
-                .regionMain(requestDto.getRegionMain())
-                .regionSub(requestDto.getRegionSub())
-                .build();
+    public static Squad create(User user, SquadRequest req) {
+        return new Squad(user, req);
     }
 
-    public void decreasingCurrentPeopleNum() {
-        if (currentPeopleNum > 0) {
-            currentPeopleNum--;
+    public void update(SquadRequest req) {
+
+        this.category = req.getCategory();
+        this.title = req.getTitle();
+        this.description = req.getDescription();
+        this.regionMain = req.getRegionMain();
+        this.regionSub = req.getRegionSub();
+        this.timeSpecified = (req.getTimeSpecified() != null) ? req.getTimeSpecified() : false;
+        if(Boolean.TRUE.equals(req.getTimeSpecified())){
+            this.meetTime = req.getMeetTime();
+        }
+        this.genderRequirement = req.getGenderRequirement();
+        this.squadAccessType = Optional.ofNullable(req.getSquadAccessType()).orElse(SquadAccessType.APPROVAL);
+        this.maxParticipants = req.getMaxParticipants();
+        this.minAge = req.getMinAge();
+        this.maxAge = req.getMaxAge();
+        this.meetDate = req.getMeetDate();
+    }
+
+
+
+    @PrePersist
+    public void prePersist() {
+        if(this.genderRequirement == null) {
+            this.genderRequirement = Gender.ALL;
         }
     }
 
+
+
+    public void increaseCurrentCount() {
+        this.currentCount++;
+    }
+
+    public void decreaseCurrentCount() {
+        this.currentCount--;
+    }
+
+    public void increaseReportCount() {
+        this.reportCount++;
+    }
+
+    public void decreaseReportCount() {
+        this.reportCount--;
+    }
+
+    public boolean isOnlyOneLeft() {
+        return members.stream().filter(member -> member.getAttendanceStatus() == AttendanceStatus.JOINED)
+                .count() == 1;
+    }
+
+    public void joinParticipant(SquadMember member) {
+        this.members.add(member);
+        if(this.squadAccessType == SquadAccessType.DIRECT) {
+            this.increaseCurrentCount();
+        }
+    }
 }

@@ -2,7 +2,7 @@ package FeedStudy.StudyFeed.squad.dto;
 
 import FeedStudy.StudyFeed.global.dto.RegionRequest;
 import FeedStudy.StudyFeed.global.type.SquadAccessType;
-import FeedStudy.StudyFeed.global.type.SquadGender;
+import FeedStudy.StudyFeed.global.type.Gender;
 import FeedStudy.StudyFeed.global.type.Topic;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -28,7 +28,7 @@ public class SquadUpdateRequestDto implements RegionRequest {
     private LocalDate meetDate;
     private LocalTime meetTime;
 
-    private SquadGender squadGender;
+    private Gender gender;
 
 //    private Age age;
     private Integer minAge;

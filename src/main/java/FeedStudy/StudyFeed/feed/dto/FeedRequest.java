@@ -12,7 +12,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class FeedEditRequest {
+public class FeedRequest {
 
 
     @NotBlank
@@ -23,5 +23,5 @@ public class FeedEditRequest {
 
     private List<MultipartFile> addImages = new ArrayList<>();
 
-    private List<Long> deletedImages = new ArrayList<>();
+    private List<String> deletedImages = new ArrayList<>();
 }

@@ -15,32 +15,33 @@ import lombok.*;
 @AllArgsConstructor
 public class SquadMember extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "squad_id", nullable = false)
-    private Squad squad;
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "squad_id", nullable = false)
+    private Squad squad;
+
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AttendanceStatus attendanceStatus;
 
-    private boolean chatEntered = false;
-
-
-    public static SquadMember createSquadMember(Squad squad, User user) {
-        return SquadMember.builder()
-                .squad(squad)
-                .user(user)
-                .attendanceStatus(squad.getSquadAccessType() == SquadAccessType.OPEN
-                        ? AttendanceStatus.APPROVED
-                        : AttendanceStatus.PENDING)
-                .build();
+    private SquadMember(User user, Squad squad) {
+        this.user = user;
+        this.squad = squad;
+        this.attendanceStatus = squad.getUser().getId() == user.getId() ||
+                squad.getSquadAccessType().equals(SquadAccessType.DIRECT) ? AttendanceStatus.JOINED : AttendanceStatus.PENDING;
     }
 
-    public void rejected() {
-        setAttendanceStatus(AttendanceStatus.REJECTED);
+    public static SquadMember create(User user, Squad squad) {
+        return new SquadMember(user, squad);
     }
+
+
+
 }

@@ -17,15 +17,15 @@ public class BlockController {
 
     private final BlockService blockService;
 
-    @PostMapping("/{id}")
-    public ResponseEntity<String> blockUser(@AuthenticationPrincipal User user, @PathVariable Long id) {
-        blockService.createBlock(user, id);
+    @PostMapping("/{otherId}")
+    public ResponseEntity<String> blockUser(@AuthenticationPrincipal User user, @PathVariable User otherId) {
+        blockService.createBlock(user, otherId);
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<String> unblockUser(@AuthenticationPrincipal User user, @PathVariable Long id) {
-        blockService.removeBlock(user, id);
+    @DeleteMapping("/{otherId}")
+    public ResponseEntity<String> unblockUser(@AuthenticationPrincipal User user, @PathVariable User otherId) {
+        blockService.removeBlock(user, otherId);
         return ResponseEntity.ok("사용자 차단을 해제했습니다.");
     }
 
