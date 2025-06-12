@@ -58,104 +58,104 @@ public class UserService {
     @Autowired
     private AuthenticationManager authenticationManager;
 
-    public void RegisterUser(String email) throws MessagingException {
+//    public void RegisterUser(String email) throws MessagingException {
+//
+//        String authCode = authCodeService.generateAuthCode();
+//        authCodeService.saveAuthCode(email, authCode);
+//        mailService.sendVerifyMail(email, authCode);
+//
+//        //1. 해당되는 이메일로 인증코드를 보낸다. 보내면서 레디스에서 코드를 저장한다.
+//    }
 
-        String authCode = authCodeService.generateAuthCode();
-        authCodeService.saveAuthCode(email, authCode);
-        mailService.sendVerifyMail(email, authCode);
+//    public void activateUser(SignUpRequestDto signUpRequestDto) {
+//
+//        String email = signUpRequestDto.getEmail();
+//        String authCode = signUpRequestDto.getAuthcode();
+//
+//        if (authCodeService.checkAuthCode(email, authCode)) {
+//            throw new AuthCodeException(ErrorCode.AUTH_CODE_MISMATCH);
+//        }
+//
+//        if (userRepository.existsByEmail(email)) {
+//            throw new MemberException(ErrorCode.EMAIL_ALREADY_EXISTS);
+//        }
+//
+//        String encodedPassword = passwordEncoder.encode(signUpRequestDto.getProviderType() + signUpRequestDto.getProviderId());
+//
+//        User newUser = User.builder()
+//                .email(email)
+//                .password(encodedPassword)
+//                .userRole(UserRole.USER)
+//                .providerType(signUpRequestDto.getProviderType())
+//                .providerId(signUpRequestDto.getProviderId())
+//                .telecom(signUpRequestDto.getTelecom())
+//                .gender(signUpRequestDto.getGender())
+////                .nickName(signUpRequestDto.getNickName())
+//                .birthDate(signUpRequestDto.getBirthDate()) // feed 알람도 추가해야 하는지 Todo
+//                .build();
+//
+//
+//        userRepository.save(newUser);
+//    }
+//    // 1. 이메일과 코드를 가지고 와서 비교하면서 코드가 틀리면 예외 발생. 이메일이 이미 존재하는 이메일일시 예외 밣생
+//    // 2. 없으면 새로운 회원을 가입시킴
+//
+//    public Map<String, String> login(String email, String snsType, String snsId) {
+//        User user = userRepository.findByEmail(email)
+//                .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
+//
+//        if (!passwordEncoder.matches(snsType + snsId, user.getPassword())) {
+//            throw new MemberException(ErrorCode.PASSWORD_NOT_MATCH);
+//        }
+//
+//        Authentication authentication = authenticationManager.authenticate(
+//                new UsernamePasswordAuthenticationToken(email, snsType + snsId)
+//        );
+//        SecurityContextHolder.getContext().setAuthentication(authentication);
+//
+//        String role = user.getUserRole().name();
+//        String accessToken = jwtUtil.createAccessToken(user.getEmail(), role);
+//        String refreshToken = jwtUtil.createRefreshToken(user.getEmail(), role);
+//        refreshRepository.saveRefreshToken(user.getEmail(), refreshToken);
+//
+//
+//        Map<String, String> map = new HashMap<>();
+//        map.put("accessToken", accessToken);
+//        map.put("refreshToken", refreshToken);
+//        return map;
+//    }
 
-        //1. 해당되는 이메일로 인증코드를 보낸다. 보내면서 레디스에서 코드를 저장한다.
-    }
-
-    public void activateUser(SignUpRequestDto signUpRequestDto) {
-
-        String email = signUpRequestDto.getEmail();
-        String authCode = signUpRequestDto.getAuthcode();
-
-        if (authCodeService.checkAuthCode(email, authCode)) {
-            throw new AuthCodeException(ErrorCode.AUTH_CODE_MISMATCH);
-        }
-
-        if (userRepository.existsByEmail(email)) {
-            throw new MemberException(ErrorCode.EMAIL_ALREADY_EXISTS);
-        }
-
-        String encodedPassword = passwordEncoder.encode(signUpRequestDto.getProviderType() + signUpRequestDto.getProviderId());
-
-        User newUser = User.builder()
-                .email(email)
-                .password(encodedPassword)
-                .userRole(UserRole.USER)
-                .providerType(signUpRequestDto.getProviderType())
-                .providerId(signUpRequestDto.getProviderId())
-                .telecom(signUpRequestDto.getTelecom())
-                .gender(signUpRequestDto.getGender())
-//                .nickName(signUpRequestDto.getNickName())
-                .birthDate(signUpRequestDto.getBirthDate()) // feed 알람도 추가해야 하는지 Todo
-                .build();
-
-
-        userRepository.save(newUser);
-    }
-    // 1. 이메일과 코드를 가지고 와서 비교하면서 코드가 틀리면 예외 발생. 이메일이 이미 존재하는 이메일일시 예외 밣생
-    // 2. 없으면 새로운 회원을 가입시킴
-
-    public Map<String, String> login(String email, String snsType, String snsId) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
-
-        if (!passwordEncoder.matches(snsType + snsId, user.getPassword())) {
-            throw new MemberException(ErrorCode.PASSWORD_NOT_MATCH);
-        }
-
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email, snsType + snsId)
-        );
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        String role = user.getUserRole().name();
-        String accessToken = jwtUtil.createAccessToken(user.getEmail(), role);
-        String refreshToken = jwtUtil.createRefreshToken(user.getEmail(), role);
-        refreshRepository.saveRefreshToken(user.getEmail(), refreshToken);
-
-
-        Map<String, String> map = new HashMap<>();
-        map.put("accessToken", accessToken);
-        map.put("refreshToken", refreshToken);
-        return map;
-    }
-
-    public void logout(String accessToken) {
-
-        String token = accessToken.replace("Bearer ", ""); // Bearer 제거
-
-
-        Claims claims;
-        try {
-            claims = jwtUtil.validateToken(token);
-        } catch (Exception e) {
-            throw new TokenException(ErrorCode.INVALID_ACCESS_TOKEN);
-        }
-
-        String email = claims.getSubject();
-
-        log.info("✅ 삭제 전 refresh token 조회: {}", refreshRepository.findByEmail(email));
-
-        refreshRepository.deleteRefreshToken(email);
-
-        log.info("✅ 삭제 후 refresh token 조회: {}", refreshRepository.findByEmail(email));
-
-
-        long tokenExpiration = jwtUtil.getTokenExpiration(token);
-        System.out.println("🔴 토큰 만료 시간(ms): " + tokenExpiration);
-
-        if (tokenExpiration > 0) {
-            blackListRepository.addToBlackList(token, tokenExpiration);
-            log.info("🛑 블랙리스트 추가 완료: {}", token);
-        } else {
-            log.warn("⚠ 블랙리스트에 추가되지 않음: 만료 시간이 0 이하");
-        }
-    }
+//    public void logout(String accessToken) {
+//
+//        String token = accessToken.replace("Bearer ", ""); // Bearer 제거
+//
+//
+//        Claims claims;
+//        try {
+//            claims = jwtUtil.validateToken(token);
+//        } catch (Exception e) {
+//            throw new TokenException(ErrorCode.INVALID_ACCESS_TOKEN);
+//        }
+//
+//        String email = claims.getSubject();
+//
+//        log.info("✅ 삭제 전 refresh token 조회: {}", refreshRepository.findByEmail(email));
+//
+//        refreshRepository.deleteRefreshToken(email);
+//
+//        log.info("✅ 삭제 후 refresh token 조회: {}", refreshRepository.findByEmail(email));
+//
+//
+//        long tokenExpiration = jwtUtil.getTokenExpiration(token);
+//        System.out.println("🔴 토큰 만료 시간(ms): " + tokenExpiration);
+//
+//        if (tokenExpiration > 0) {
+//            blackListRepository.addToBlackList(token, tokenExpiration);
+//            log.info("🛑 블랙리스트 추가 완료: {}", token);
+//        } else {
+//            log.warn("⚠ 블랙리스트에 추가되지 않음: 만료 시간이 0 이하");
+//        }
+//    }
 
     @Transactional
     public void fcmTokenRefresh(User user, String fcmToken) {
@@ -173,9 +173,7 @@ public class UserService {
     public void updateNickname(User user, String nickName) {
 
         if(userRepository.existsByIdNotAndNickName(user.getId(), nickName)) {
-//           throw new MemberException(ErrorCode.USER_NAME_IN_USE); // todo
-           throw new MemberException(ErrorCode.USER_NOT_FOUND);
-
+            throw new IllegalArgumentException("중복되는 닉네임이 존재합니다.");
         }
 
         user.setNickName(nickName);
@@ -209,5 +207,15 @@ public class UserService {
         } else {
             return "올바른 형식의 이름입니다";
         }
+    }
+
+
+    public void changeProfile(String email, String providerType, String providerId, String password) {
+        User user = userRepository.findByEmail(email).orElseThrow();
+        String encode = passwordEncoder.encode(password);
+        user.setProviderType(providerType);
+        user.setProviderId(providerId);
+        user.setPassword(encode);
+        userRepository.save(user);
     }
 }

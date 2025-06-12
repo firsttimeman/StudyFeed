@@ -29,7 +29,7 @@ public class FeedSimpleDto {
     public static FeedSimpleDto toDto(Feed feed, Long userId, boolean isLike) {
         Long id = feed.getId();
         String nickname = feed.getUser().getNickName();
-        String profileImageUrl = "";
+        String profileImageUrl = feed.getUser().getImageUrl();
         String category = feed.getCategory();
         String content = feed.getContent();
         List<String> images = feed.getImages().stream().map(i -> i.getImageUrl()).toList();

@@ -16,7 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/user")
 @RequiredArgsConstructor
 @Slf4j
 public class UserController {
@@ -104,6 +104,13 @@ public class UserController {
         System.out.println("update FCM token: " + fcmToken);
         userService.fcmTokenRefresh(user, fcmToken);
         return ResponseEntity.ok("FCM 토큰이 재발급 되었습니다.");
+    }
+
+    @PutMapping("/modity_password") // 사실 유저 설정창에서의 프로필 변경 느낌
+    public ResponseEntity<?> changeProfile(@RequestParam String email, @RequestParam String providerType,
+                                           @RequestParam String password, @RequestParam String providerId) {
+        userService.changeProfile(email, providerType, password, providerId);
+        return ResponseEntity.ok().build();
     }
 
 

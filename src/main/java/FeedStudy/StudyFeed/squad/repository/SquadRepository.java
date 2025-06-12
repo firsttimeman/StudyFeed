@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,33 +16,36 @@ public interface SquadRepository extends JpaRepository<Squad, Long> {
 
     Page<Squad> findByUser(User user, Pageable pageable);
 
-    @Query("SELECT s FROM Squad s " +
-            "WHERE (:category = '전체' OR s.category = :category) " +
-            "AND (:regionMain = '전체' OR s.regionMain = :regionMain) " +
-            "AND (:regionSub = '전체' OR s.regionSub = :regionSub) " +
-            "AND (:recruitingOnly = false OR s.closed = false)" +
-            "AND s.meetDate >= CURRENT_DATE - 7"
-    )
+    @Query("""
+                SELECT s FROM Squad s
+                WHERE (:category = '전체' OR s.category = :category)
+                AND (:regionMain = '전체' OR s.regionMain = :regionMain)
+                AND (:regionSub = '전체' OR s.regionSub = :regionSub)
+                AND (:recruitingOnly = false OR s.closed = false)
+                AND s.meetDate >= :sevenDaysAgo
+            """)
     Page<Squad> findFilteredSquads(@Param("category") String category,
                                    @Param("regionMain") String regionMain,
                                    @Param("regionSub") String regionSub,
                                    @Param("recruitingOnly") boolean recruitingOnly,
+                                   @Param("sevenDaysAgo") LocalDate sevenDaysAgo,
                                    Pageable pageable);
 
     @Query("""
-                        SELECT s FROM Squad s
-                        WHERE (:category = '전체' OR s.category = :category)
-                        AND (:regionMain = '전체' OR s.regionMain = :regionMain)
-                        AND (:regionMain = '전체' OR :regionSub = '전체' OR s.regionSub = :regionSub)
-                        AND (:recruitingOnly = false OR s.closed = false)
-                        AND s.meetDate >= CURRENT_DATE - 7
-                        AND s.user NOT IN :excludedUsers
-                        """)
+            SELECT s FROM Squad s
+            WHERE (:category = '전체' OR s.category = :category)
+            AND (:regionMain = '전체' OR s.regionMain = :regionMain)
+            AND (:regionMain = '전체' OR :regionSub = '전체' OR s.regionSub = :regionSub)
+            AND (:recruitingOnly = false OR s.closed = false)
+            AND s.meetDate >= :sevenDaysAgo
+            AND s.user NOT IN :excludedUsers
+            """)
     Page<Squad> findFilteredSquadsWithExclusion(@Param("category") String category,
                                                 @Param("regionMain") String regionMain,
                                                 @Param("regionSub") String regionSub,
                                                 @Param("recruitingOnly") boolean recruitingOnly,
-                                                @Param("excluedUsers") List<User> excludedUsers,
+                                                @Param("excludedUsers") List<User> excludedUsers,
+                                                @Param("sevenDaysAgo") LocalDate sevenDaysAgo,
                                                 Pageable pageable);
 
 

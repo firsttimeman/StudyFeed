@@ -47,7 +47,7 @@ public class FeedController {
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> getReplies(@AuthenticationPrincipal User user,
                                         @PathVariable Long commentId,
-                                        @PageableDefault(sort = "createdAt", direction = Sort.DEFAULT_DIRECTION.ASC,
+                                        @PageableDefault(sort = "createdAt", direction = Sort.Direction.ASC,
                                          size = 10) Pageable pageable) {
         FeedRepliesDto replies = feedService.getReplies(user, commentId, pageable);
         return ResponseEntity.ok(replies);

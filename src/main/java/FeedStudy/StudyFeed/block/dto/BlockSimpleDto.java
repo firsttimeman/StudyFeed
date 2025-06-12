@@ -14,6 +14,6 @@ public class BlockSimpleDto {
     private String nickName;
 
     public static BlockSimpleDto toDto(User user) {
-        return new BlockSimpleDto(user.getId(), user.getGender().getDescription(), user.getNickName());
+        return new BlockSimpleDto(user.getId(), user.getGender(), user.getNickName());
     }
 }

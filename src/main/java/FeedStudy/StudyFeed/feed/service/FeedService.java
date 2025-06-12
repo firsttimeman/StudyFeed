@@ -30,7 +30,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -74,11 +73,12 @@ public class FeedService {
 
 
     public FeedRepliesDto getReplies(User user, Long parentId, Pageable pageable) {
-        Page<FeedComment> page = feedCommentRepository.findByParentId(parentId, pageable);
-        boolean hasNext = page.hasNext(); // todo 질문
+        Page<FeedComment> page = feedCommentRepository.findByParentComment_Id(parentId, pageable);
+        boolean hasNext = page.hasNext();
         List<FeedCommentDto> replies = page.getContent().stream()
                 .map(reply -> FeedCommentDto.toDto(reply, user.getId()))
                 .toList();
+
 
         return new FeedRepliesDto(hasNext, replies);
     }
@@ -91,6 +91,7 @@ public class FeedService {
         if(request.getDeletedImages() != null) {
             deleteImages(request.getDeletedImages());
         }
+
         if(request.getAddImages() != null) {
             saveFeedImages(feed, request.getAddImages());
         }
@@ -306,7 +307,7 @@ public class FeedService {
 
     public void deleteComment(Long userId, Long commentId) {
         FeedComment comment = feedCommentRepository.
-                findByParentCommentIdAndId(commentId, userId).orElseThrow(() ->
+                findByParentComment_IdAndId(commentId, userId).orElseThrow(() ->
                         new IllegalArgumentException("댓글이 존재하지 않습니다."));
 
         if(!comment.getUser().getId().equals(userId)) {

@@ -24,6 +24,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -132,13 +133,15 @@ public class SquadService extends ASquadService {
         }
         Page<Squad> squads;
 
+        LocalDate sevenDaysAgo = LocalDate.now().minusDays(7);
+
         if(excludedUser.isEmpty()) {
           squads = squadRepository.findFilteredSquads(req.getCategory(), req.getRegionMain(),
-                    req.getRegionSub(), req.isRecruitingOnly(), pageable);
+                    req.getRegionSub(), req.isRecruitingOnly(), sevenDaysAgo, pageable);
 
         } else {
             squads = squadRepository.findFilteredSquadsWithExclusion(req.getCategory(), req.getRegionMain(),
-                    req.getRegionSub(), req.isRecruitingOnly(), excludedUser, pageable);
+                    req.getRegionSub(), req.isRecruitingOnly(), excludedUser, sevenDaysAgo, pageable);
         }
         return new DataResponse(squads.getContent().stream().map(SquadSimpleDto::toDto).toList(), squads.hasNext());
     }

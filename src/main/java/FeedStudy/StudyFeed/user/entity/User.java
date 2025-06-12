@@ -8,10 +8,12 @@ import FeedStudy.StudyFeed.user.dto.SignUpRequestDto;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.*;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Entity
@@ -92,5 +94,9 @@ public class User extends BaseEntity {
         this.birthDate = LocalDate.parse(req.getBirthDate().toString(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         this.gender = req.getGender();
         this.userRole = UserRole.USER;
+    }
+
+    public List<SimpleGrantedAuthority> getAuthorities() {
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + this.userRole.name()));
     }
 }
