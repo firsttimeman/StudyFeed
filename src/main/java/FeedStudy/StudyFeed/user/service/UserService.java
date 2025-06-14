@@ -218,4 +218,9 @@ public class UserService {
         user.setPassword(encode);
         userRepository.save(user);
     }
+
+    public String checkAccessToken(String data) {
+
+        return data + "okay token";
+    }
 }

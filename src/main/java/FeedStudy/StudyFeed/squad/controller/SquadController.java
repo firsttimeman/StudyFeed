@@ -33,7 +33,7 @@ public class SquadController {
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<String> createSquad(@AuthenticationPrincipal User user,
                                               @Valid @RequestBody SquadRequest requestDto) {
-
+        System.out.println(requestDto);
         squadService.createSquad(requestDto, user);
         return ResponseEntity.ok("Squad created");
     }

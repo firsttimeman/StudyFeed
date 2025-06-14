@@ -106,8 +106,8 @@ public class SquadDetailDto {
                 btnMsg = "마감된 모임";
             } else {
                 LocalDateTime squadDateTime = LocalDateTime.of(
-                        squad.getMeetDate(),
-                        squad.getMeetTime() != null ? squad.getMeetTime() : LocalTime.of(23, 59, 59));
+                        squad.getDate(),
+                        squad.getTime() != null ? squad.getTime() : LocalTime.of(23, 59, 59));
                 if(squadDateTime.isBefore(LocalDateTime.now())) {
                     btnMsg = "종료된 모임";
                 } else {
@@ -123,14 +123,14 @@ public class SquadDetailDto {
 
     private static String formatDateTime(Squad squad) {
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일 E", Locale.KOREAN);
-        String dateStr = squad.getMeetDate().format(dateTimeFormatter);
+        String dateStr = squad.getDate().format(dateTimeFormatter);
 
-        if(squad.getMeetTime() == null) {
+        if(squad.getTime() == null) {
             return dateStr;
         }
 
-        int hour = squad.getMeetTime().getHour();
-        int minute = squad.getMeetTime().getMinute();
+        int hour = squad.getTime().getHour();
+        int minute = squad.getTime().getMinute();
 
         String period = hour < 12 ? "오전" : "오후";
         int displayHour = hour % 12 == 0 ? 12 : hour % 12;
@@ -144,9 +144,9 @@ public class SquadDetailDto {
     }
 
     private static String calculateStatus(Squad squad) {
-        if(squad.isClosed() || squad.getMeetDate().isBefore(LocalDate.now()) ||
-                squad.getMeetDate().isEqual(LocalDate.now()) && squad.getMeetTime() != null
-                        && squad.getMeetTime().isBefore(LocalTime.now())) {
+        if(squad.isClosed() || squad.getDate().isBefore(LocalDate.now()) ||
+           squad.getDate().isEqual(LocalDate.now()) && squad.getTime() != null
+           && squad.getTime().isBefore(LocalTime.now())) {
             return "모집 마감";
         }
         return "모집 중";

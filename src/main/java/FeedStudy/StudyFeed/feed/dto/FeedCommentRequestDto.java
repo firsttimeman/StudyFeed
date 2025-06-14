@@ -1,21 +1,22 @@
 package FeedStudy.StudyFeed.feed.dto;
 
-import FeedStudy.StudyFeed.feed.entity.FeedComment;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
 @Getter
 @Setter
+@ToString
 public class FeedCommentRequestDto {
 
-    private Long feedCommentId;
+    private Long feedCommentPid;
 
     @NotNull
-    private String comment;
+    private String content;
 
     @NotNull
-    private Long feedId;
+    private Long feedPid;
 
 
 }

@@ -5,7 +5,7 @@ import FeedStudy.StudyFeed.global.dto.DataResponse;
 import FeedStudy.StudyFeed.global.jwt.JwtUtil;
 import FeedStudy.StudyFeed.global.service.FirebaseMessagingService;
 import FeedStudy.StudyFeed.global.type.AttendanceStatus;
-import FeedStudy.StudyFeed.global.type.SquadAccessType;
+import FeedStudy.StudyFeed.global.type.JoinType;
 import FeedStudy.StudyFeed.squad.dto.SquadDetailDto;
 import FeedStudy.StudyFeed.squad.dto.SquadFilterRequest;
 import FeedStudy.StudyFeed.squad.dto.SquadRequest;
@@ -120,7 +120,7 @@ public class SquadService extends ASquadService {
 
         joinSquad(user, squad);
 
-        return Map.of("status", squad.getSquadAccessType().equals(SquadAccessType.APPROVAL) ? "requested" : "approved");
+        return Map.of("status", squad.getJoinType().equals(JoinType.APPROVAL) ? "requested" : "approved");
     }
 
 
@@ -155,7 +155,7 @@ public class SquadService extends ASquadService {
         Squad squad = squadRepository.findById(squadId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 모임을 찾을 수 없습니다."));
 
-        if (squad.getSquadAccessType().equals(SquadAccessType.DIRECT)) {
+        if (squad.getJoinType().equals(JoinType.DIRECT)) {
             throw new AccessDeniedException("승인제가 아닙니다.");
         }
         if (user.getId() != squad.getUser().getId()) {

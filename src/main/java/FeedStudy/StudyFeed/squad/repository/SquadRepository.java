@@ -22,7 +22,7 @@ public interface SquadRepository extends JpaRepository<Squad, Long> {
                 AND (:regionMain = '전체' OR s.regionMain = :regionMain)
                 AND (:regionSub = '전체' OR s.regionSub = :regionSub)
                 AND (:recruitingOnly = false OR s.closed = false)
-                AND s.meetDate >= :sevenDaysAgo
+                AND s.date >= :sevenDaysAgo
             """)
     Page<Squad> findFilteredSquads(@Param("category") String category,
                                    @Param("regionMain") String regionMain,
@@ -37,7 +37,7 @@ public interface SquadRepository extends JpaRepository<Squad, Long> {
             AND (:regionMain = '전체' OR s.regionMain = :regionMain)
             AND (:regionMain = '전체' OR :regionSub = '전체' OR s.regionSub = :regionSub)
             AND (:recruitingOnly = false OR s.closed = false)
-            AND s.meetDate >= :sevenDaysAgo
+            AND s.date >= :sevenDaysAgo
             AND s.user NOT IN :excludedUsers
             """)
     Page<Squad> findFilteredSquadsWithExclusion(@Param("category") String category,

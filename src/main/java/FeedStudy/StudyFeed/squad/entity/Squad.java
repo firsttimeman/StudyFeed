@@ -41,15 +41,15 @@ public class Squad extends BaseEntity {
     private int maxParticipants, minAge, maxAge;
 
     @Column(nullable = false)
-    private LocalDate meetDate;
+    private LocalDate date;
 
     @Column(nullable = false)
-    private LocalTime meetTime;
+    private LocalTime time;
 
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private SquadAccessType squadAccessType = SquadAccessType.APPROVAL;
+    private JoinType joinType = JoinType.APPROVAL;
 
     @Lob
     private String description;
@@ -82,14 +82,14 @@ public class Squad extends BaseEntity {
         this.regionSub = req.getRegionSub();
         this.timeSpecified = (req.getTimeSpecified() != null) ? req.getTimeSpecified() : false;
         if(Boolean.TRUE.equals(req.getTimeSpecified())){
-            this.meetTime = req.getMeetTime();
+            this.time = req.getTime();
         }
         this.genderRequirement = req.getGenderRequirement();
-        this.squadAccessType = Optional.ofNullable(req.getSquadAccessType()).orElse(SquadAccessType.APPROVAL);
+        this.joinType = Optional.ofNullable(req.getJoinType()).orElse(JoinType.APPROVAL);
         this.maxParticipants = req.getMaxParticipants();
         this.minAge = req.getMinAge();
         this.maxAge = req.getMaxAge();
-        this.meetDate = req.getMeetDate();
+        this.date = req.getDate();
     }
 
     public static Squad create(User user, SquadRequest req) {
@@ -105,14 +105,14 @@ public class Squad extends BaseEntity {
         this.regionSub = req.getRegionSub();
         this.timeSpecified = (req.getTimeSpecified() != null) ? req.getTimeSpecified() : false;
         if(Boolean.TRUE.equals(req.getTimeSpecified())){
-            this.meetTime = req.getMeetTime();
+            this.time = req.getTime();
         }
         this.genderRequirement = req.getGenderRequirement();
-        this.squadAccessType = Optional.ofNullable(req.getSquadAccessType()).orElse(SquadAccessType.APPROVAL);
+        this.joinType = Optional.ofNullable(req.getJoinType()).orElse(JoinType.APPROVAL);
         this.maxParticipants = req.getMaxParticipants();
         this.minAge = req.getMinAge();
         this.maxAge = req.getMaxAge();
-        this.meetDate = req.getMeetDate();
+        this.date = req.getDate();
     }
 
 
@@ -149,7 +149,7 @@ public class Squad extends BaseEntity {
 
     public void joinParticipant(SquadMember member) {
         this.members.add(member);
-        if(this.squadAccessType == SquadAccessType.DIRECT) {
+        if(this.joinType == JoinType.DIRECT) {
             this.increaseCurrentCount();
         }
     }

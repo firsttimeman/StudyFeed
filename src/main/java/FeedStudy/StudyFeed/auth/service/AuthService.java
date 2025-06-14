@@ -13,6 +13,7 @@ import FeedStudy.StudyFeed.user.repository.UserRepository;
 import FeedStudy.StudyFeed.user.service.MailService;
 import com.google.api.pathtemplate.ValidationException;
 import io.jsonwebtoken.Claims;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -143,6 +144,7 @@ public class AuthService {
         refreshRepository.saveRefreshToken(user.getEmail(), refreshToken);
         return refreshToken;
     }
+
 
 
 }

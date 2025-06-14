@@ -1,7 +1,7 @@
 package FeedStudy.StudyFeed.squad.dto;
 
 import FeedStudy.StudyFeed.global.dto.RegionRequest;
-import FeedStudy.StudyFeed.global.type.SquadAccessType;
+import FeedStudy.StudyFeed.global.type.JoinType;
 import FeedStudy.StudyFeed.global.type.Gender;
 import FeedStudy.StudyFeed.global.type.Topic;
 import jakarta.validation.constraints.NotNull;
@@ -36,7 +36,7 @@ public class SquadUpdateRequestDto implements RegionRequest {
 
     private String description;
 
-    private SquadAccessType squadAccessType;
+    private JoinType joinType;
 
     private Integer PeopleNum;
 

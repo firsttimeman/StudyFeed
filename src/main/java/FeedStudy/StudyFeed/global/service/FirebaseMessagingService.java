@@ -11,8 +11,8 @@ public class FirebaseMessagingService {
 
     private final FirebasePublisherService publisherService;
 
-    public String sendCommentNotification(boolean isAlarm, String token, String title, String content, String data) {
-        if (isAlarm && token != null) {
+    public String sendCommentNotification(Boolean isAlarm, String token, String title, String content, String data) {
+        if (isAlarm != null && isAlarm && token != null) {
             try {
                 return publisherService.postToClient(title, content, data, token);
             } catch (FirebaseMessagingException e) {

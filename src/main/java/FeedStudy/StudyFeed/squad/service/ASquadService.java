@@ -108,7 +108,7 @@ public abstract class ASquadService {
     }
 
     public void validateTimePassed(Squad squad) {
-        if(LocalDateTime.of(squad.getMeetDate(), squad.getMeetTime() == null ? LocalTime.of(23, 59, 59) : squad.getMeetTime())
+        if(LocalDateTime.of(squad.getDate(), squad.getTime() == null ? LocalTime.of(23, 59, 59) : squad.getTime())
                 .isBefore(LocalDateTime.now())) {
             throw new IllegalArgumentException("종료된 모임입니다.");
         }

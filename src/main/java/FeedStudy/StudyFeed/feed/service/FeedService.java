@@ -49,16 +49,16 @@ public class FeedService {
 
 
     public FeedSimpleDto create(User user, FeedRequest request) {
-        List<FeedImage> images = request.getAddImages().stream()
-                .map(image -> new FeedImage(image.getOriginalFilename()))
-                .toList();
-
-        Feed feed = new Feed(user, request, images);
+        // 1. 피드 생성 (이미지는 일단 빈 리스트로 생성)
+        Feed feed = new Feed(user, request, new ArrayList<>());
         feedRepository.save(feed);
 
-        if(request.getAddImages() != null) {
-            saveFeedImages(feed, request.getAddImages());
+        // 2. 이미지가 있으면 업로드 및 연결
+        if (request.getAddedImages() != null && !request.getAddedImages().isEmpty()) {
+            saveFeedImages(feed, request.getAddedImages());
         }
+
+        // 3. 결과 반환
         return FeedSimpleDto.toDto(feed, user.getId(), false);
     }
 
@@ -92,8 +92,8 @@ public class FeedService {
             deleteImages(request.getDeletedImages());
         }
 
-        if(request.getAddImages() != null) {
-            saveFeedImages(feed, request.getAddImages());
+        if(request.getAddedImages() != null) {
+            saveFeedImages(feed, request.getAddedImages());
         }
 
 
@@ -117,12 +117,12 @@ public class FeedService {
 
     }
 
-    public FeedLikeDto feedLike(Long userId, Long feedId) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("사용자를 찾을수가 없습니다."));
+    @Transactional
+    public FeedLikeDto feedLike(User user, Long feedId) {
         Feed feed = feedRepository.findById(feedId).orElseThrow(() -> new FeedException(ErrorCode.FEED_NOT_FOUND));
 
         boolean isNew = !hasFeedLike(user, feed);
-
+        System.out.println("isNew = " + isNew);
         if(isNew) {
             feed.increaseLikeCount();
             createFeedLike(feed, user);
@@ -242,29 +242,67 @@ public class FeedService {
 
 
     private void saveFeedImages(Feed feed, List<MultipartFile> images) {
-        List<FeedImage> feedImages = images.stream().map(image -> {
-            String originalFilename = image.getOriginalFilename();
+//        List<FeedImage> feedImages = images.stream().map(image -> {
+//            String originalFilename = image.getOriginalFilename();
+//
+//            FeedImage feedImage = new FeedImage(null, originalFilename);
+//            s3FileService.upload(image, feedImage.getUniqueName());
+//            String imgUrl = s3FileService.getFullUrl(feedImage.getUniqueName());
+//
+//            if (imgUrl == null) {
+//                throw new IllegalStateException("이미지 URL이 null입니다. S3 업로드 또는 URL 생성에 실패했습니다.");
+//            }
+//
+//            feedImage.setImageUrl(imgUrl);
+//            return feedImage;
+//        }).toList();
+//
+//        feed.addImage(feedImages);
+//        feedImageRepository.saveAll(feedImages);
 
-            FeedImage feedImage = new FeedImage(null, originalFilename);
-            s3FileService.upload(image, feedImage.getUniqueName());
-            String imgUrl = s3FileService.getFullUrl(feedImage.getUniqueName());
+        List<FeedImage> feedImages = images.stream()
+                .map(image -> {
+                    String originalFilename = image.getOriginalFilename();
 
-            feedImage.setImageUrl(imgUrl);
-            return feedImage;
-        }).toList();
+                    // 안정성 검사
+                    if (originalFilename == null || !originalFilename.contains(".")) {
+                        throw new IllegalArgumentException("파일명이 null이거나 확장자가 없습니다.");
+                    }
 
+                    // FeedImage 생성 및 uniqueName 생성
+                    FeedImage feedImage = new FeedImage(null, originalFilename);
+
+                    // S3 업로드
+                    s3FileService.upload(image, feedImage.getUniqueName());
+
+                    // URL 생성
+                    String imgUrl = s3FileService.getFullUrl(feedImage.getUniqueName());
+                    if (imgUrl == null) {
+                        throw new IllegalStateException("이미지 URL이 null입니다.");
+                    }
+
+                    // URL 세팅
+                    feedImage.setImageUrl(imgUrl);
+                    return feedImage;
+                })
+                .toList();
+
+        // 연관관계 세팅
         feed.addImage(feedImages);
+
+        // DB 저장
         feedImageRepository.saveAll(feedImages);
+
+
     }
 
 
     public void createFeedLike(Feed feed, User user)  {
-
         FeedLike feedLike = new FeedLike(user, feed);
         feedLikeRepository.save(feedLike);
-
         String fcmToken = feed.getUser().getFcmToken();
-        boolean isAlarm = feed.getUser().getFeedLikeAlarm();
+        Boolean isAlarm = feed.getUser().getFeedLikeAlarm();
+
         String title = "게시글 좋아요";
         String content = String.format("회원님의 게시글 [%s]를 좋아합니다.",
                 feed.getContent().substring(0, Math.min(20, feed.getContent().length())));
@@ -278,22 +316,22 @@ public class FeedService {
     }
 
 
-    public void writeComment(Long userId, FeedCommentRequestDto req) {
-        User user = userRepository.findById(userId).get();
-        Feed feed = feedRepository.findById(req.getFeedId()).get();
+    public void writeComment(User user, FeedCommentRequestDto req) {
+        System.out.println(req);
+        Feed feed = feedRepository.findById(req.getFeedPid()).orElseThrow();
 
-        FeedComment parentComment = req.getFeedCommentId() != null
-                ? feedCommentRepository.findById(req.getFeedCommentId())
+        FeedComment parentComment = req.getFeedCommentPid() != null
+                ? feedCommentRepository.findById(req.getFeedCommentPid())
                 .orElse(null) : null;
 
-        FeedComment comment = feedCommentRepository.save(new FeedComment(user, feed, req.getComment(), parentComment));
+        FeedComment comment = feedCommentRepository.save(new FeedComment(user, feed, req.getContent(), parentComment));
         feed.increaseCommentCount();
         feedRepository.save(feed);
 
         String fcmToken, pushTitle;
-        boolean isAlarm;
-
-        if(req.getFeedCommentId() == null) {
+        Boolean isAlarm = null;
+        System.out.println("testing: " + (isAlarm == null));
+        if(req.getFeedCommentPid() == null) {
             fcmToken = feed.getUser().getFcmToken();
             isAlarm = feed.getUser().getFeedAlarm();
             pushTitle = "작성하신 글의 새로운 댓글입니다.";
@@ -302,7 +340,7 @@ public class FeedService {
             isAlarm = feed.getUser().getFeedAlarm();
             pushTitle = "작성하신 댓글의 새로운 답글입니다.";
         }
-        firebaseMessagingService.sendCommentNotification(isAlarm, fcmToken, pushTitle, req.getComment(), feed.getId() + ",feed");
+        firebaseMessagingService.sendCommentNotification(isAlarm, fcmToken, pushTitle, req.getContent(), feed.getId() + ",feed");
     }
 
     public void deleteComment(Long userId, Long commentId) {

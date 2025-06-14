@@ -3,7 +3,7 @@ package FeedStudy.StudyFeed.squad.entity;
 import FeedStudy.StudyFeed.global.entity.BaseEntity;
 import FeedStudy.StudyFeed.user.entity.User;
 import FeedStudy.StudyFeed.global.type.AttendanceStatus;
-import FeedStudy.StudyFeed.global.type.SquadAccessType;
+import FeedStudy.StudyFeed.global.type.JoinType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -35,7 +35,7 @@ public class SquadMember extends BaseEntity {
         this.user = user;
         this.squad = squad;
         this.attendanceStatus = squad.getUser().getId() == user.getId() ||
-                squad.getSquadAccessType().equals(SquadAccessType.DIRECT) ? AttendanceStatus.JOINED : AttendanceStatus.PENDING;
+                squad.getJoinType().equals(JoinType.DIRECT) ? AttendanceStatus.JOINED : AttendanceStatus.PENDING;
     }
 
     public static SquadMember create(User user, Squad squad) {

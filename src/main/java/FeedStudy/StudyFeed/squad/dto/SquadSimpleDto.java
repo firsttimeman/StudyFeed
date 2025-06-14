@@ -3,7 +3,6 @@ package FeedStudy.StudyFeed.squad.dto;
 import FeedStudy.StudyFeed.squad.entity.Squad;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
@@ -14,6 +13,7 @@ import java.time.LocalTime;
 @Setter
 @AllArgsConstructor
 public class SquadSimpleDto {
+    private Long pid;
     private String category;
     private String name;
     private String region;
@@ -35,12 +35,13 @@ public class SquadSimpleDto {
         }
 
         return new SquadSimpleDto(
+                squad.getId(),
                 squad.getCategory(),
                 squad.getTitle(),
                 sb.toString(),
                 squad.getGenderRequirement().getGender(),
-                squad.getMeetDate(),
-                squad.getMeetTime(),
+                squad.getDate(),
+                squad.getTime(),
                 squad.isTimeSpecified(),
                 squad.getCreatedAt(),
                 squad.isClosed(),

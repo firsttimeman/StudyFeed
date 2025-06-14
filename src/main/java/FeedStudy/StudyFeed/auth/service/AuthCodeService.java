@@ -18,9 +18,9 @@ public class AuthCodeService {
     private final RedisTemplate<String, String> redisTemplate;
 
     public void saveAuthCode(String email, String authCode) {
-        String key = "authCode:" + email; // 공백 제거
+        String key = "authCode:" + authCode; // 공백 제거
         redisTemplate.opsForValue().set(key, authCode, 10, TimeUnit.MINUTES);
-        redisTemplate.opsForValue().set("emailByAuthCode:" + authCode, email, 10, TimeUnit.MINUTES);
+        redisTemplate.opsForValue().set("emailByAuthCode:" +email, authCode, 10, TimeUnit.MINUTES);
 
         log.info("✅ 저장된 키 from saveAuthCode: " + key);
         log.info("✅ 저장된 인증 코드 saveAuthCOde: " + authCode);
@@ -54,7 +54,9 @@ public class AuthCodeService {
 
 
     public boolean checkAuthCode(String email, String authCode) {
-        String storedCode = redisTemplate.opsForValue().get("authCode: " + email);
+        System.out.println(email);
+        System.out.println(authCode);
+        String storedCode = redisTemplate.opsForValue().get("authCode:" + authCode);
         System.out.println("✅ 저장된 인증 코드: " + storedCode);
         System.out.println("✅ 사용자가 입력한 인증 코드: " + authCode);
         if(storedCode != null && storedCode.equals(authCode)) {

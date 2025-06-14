@@ -18,7 +18,7 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/verfiymail")
+    @PostMapping("/verifymail")
     public ResponseEntity<?> verifymail(@RequestBody SignUpRequestDto req) {
         authService.sendVerifyMail(req);
         return ResponseEntity.ok().build();

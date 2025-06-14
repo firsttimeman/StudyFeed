@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Getter
-public enum SquadAccessType {
+public enum JoinType {
     DIRECT("누구나 참여 가능"),
     APPROVAL("승인을 받아야 가능");
 

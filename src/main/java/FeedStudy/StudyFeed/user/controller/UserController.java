@@ -113,6 +113,12 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/check")
+    public ResponseEntity<?> checkAccessToken(@AuthenticationPrincipal User user, @RequestParam String data) {
+        String check = userService.checkAccessToken(data);
+        return ResponseEntity.ok().body(check);
+    }
+
 
 
 }

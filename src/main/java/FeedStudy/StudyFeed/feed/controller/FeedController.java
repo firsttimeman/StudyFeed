@@ -81,7 +81,7 @@ public class FeedController {
     @GetMapping("/like/{id}")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> likeFeed(@AuthenticationPrincipal User user, @PathVariable Long id) {
-        FeedLikeDto feedLikeDto = feedService.feedLike(user.getId(), id);
+        FeedLikeDto feedLikeDto = feedService.feedLike(user, id);
         return ResponseEntity.ok(feedLikeDto);
     }
 
@@ -134,7 +134,7 @@ public class FeedController {
     @PostMapping("/createcomment")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> createComment(@AuthenticationPrincipal User user, @ModelAttribute FeedCommentRequestDto req) {
-        feedService.writeComment(user.getId(), req);
+        feedService.writeComment(user, req);
         return ResponseEntity.ok().build();
     }
 

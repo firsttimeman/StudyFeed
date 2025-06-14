@@ -25,10 +25,8 @@ public class FeedImage extends BaseEntity {
     @JoinColumn(name = "feed_id", nullable = false)
     private Feed feed;
 
-    @Column(nullable = false)
     private String uniqueName;
 
-    @Column(nullable = false)
     private String imageUrl;
 
     public FeedImage(String imageUrl , String originalName) {
@@ -38,6 +36,7 @@ public class FeedImage extends BaseEntity {
     public FeedImage(String originalName) {
         this.uniqueName = generateUniqueName(extractExtension(originalName));
     }
+
 
     public void initFeed(Feed feed) {
         if(this.feed == null) {
@@ -64,5 +63,6 @@ public class FeedImage extends BaseEntity {
     private boolean supportedExtensions(String ext) {
         return Arrays.stream(supportedExtensions).anyMatch(x -> x.equalsIgnoreCase(ext));
     }
+
 
 }
