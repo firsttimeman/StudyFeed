@@ -33,6 +33,11 @@ public class S3FileService implements FileService {
         }
     }
 
+    public String uploadAndReturnUrl(MultipartFile file, String fileName) {
+        upload(file, fileName);
+        return getFullUrl(fileName);
+    }
+
     @Override
     public void delete(String fileName) {
         amazonS3.deleteObject(bucket, fileName);

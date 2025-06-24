@@ -124,8 +124,8 @@ public abstract class ASquadService {
 
 
     public boolean isGenderValidate(User user, Gender gender) {
-        return gender == Gender.FEMALE_ONLY && user.getGender().equals("여성")
-                || gender == Gender.MALE_ONLY && user.getGender().equals("남성");
+        return gender == Gender.FEMALE && user.getGender().equals("여성")
+                || gender == Gender.MALE && user.getGender().equals("남성");
     }
 
 

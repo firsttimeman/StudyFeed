@@ -56,18 +56,29 @@ public class SquadService extends ASquadService {
 
     }
 
+    @Transactional
     public void updateSquad(Long squadId, User user, SquadRequest req) {
+
+        System.out.println("1");
         Squad squad = findSquad(squadId);
 
+        System.out.println("2");
         validateOwner(user, squad);
 
+        System.out.println("3");
         validateAgeRange(squad, req);
 
+        System.out.println("4");
         validateGender(squad, req);
 
+        System.out.println("5");
         validateMemberCount(squad, req);
 
+        System.out.println("6");
         squad.update(req);
+
+        squadRepository.save(squad);
+        System.out.println("7");
 
     }
 

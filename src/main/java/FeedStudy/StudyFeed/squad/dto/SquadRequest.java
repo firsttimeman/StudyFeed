@@ -14,7 +14,8 @@ import java.time.LocalTime;
 @Getter
 @Setter
 @ToString
-public class SquadRequest implements RegionRequest {
+//implements RegionRequest
+public class SquadRequest  {
 
 
     private String title, category, regionMain, regionSub, description;

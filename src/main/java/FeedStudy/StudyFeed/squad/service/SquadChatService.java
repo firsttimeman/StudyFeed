@@ -1,70 +1,118 @@
-//package FeedStudy.StudyFeed.squad.service;
-//
-//
-//import FeedStudy.StudyFeed.global.service.S3FileService;
-//import FeedStudy.StudyFeed.squad.entity.Squad;
-//import FeedStudy.StudyFeed.squad.entity.SquadChat;
-//import FeedStudy.StudyFeed.squad.repository.SquadChatRepository;
-//import FeedStudy.StudyFeed.squad.repository.SquadRepository;
-//import FeedStudy.StudyFeed.user.entity.User;
-//import FeedStudy.StudyFeed.user.repository.UserRepository;
-//import lombok.RequiredArgsConstructor;
-//import org.springframework.stereotype.Service;
-//import org.springframework.web.multipart.MultipartFile;
-//
-//import java.time.LocalDate;
-//import java.time.LocalDateTime;
-//import java.util.List;
-//
-//@Service
-//@RequiredArgsConstructor
-//public class SquadChatService {
-//
-//    private final SquadRepository squadRepository;
-//    private final UserRepository userRepository;
-//    private final SquadChatRepository squadChatRepository;
-//    private final S3FileService s3FileService;
-//
-//    public void sendTextMessage(Long squadId, Long userId, String message) {
-//        Squad squad = squadRepository.findById(squadId).orElseThrow(() -> new RuntimeException("Squad not found"));
-//        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
-//
-//        insertDateMessageIfNeeded(squad);
-//
-//        SquadChat squadChat = SquadChat.text(user, squad, message);
-//        squadChatRepository.save(squadChat);
-//    }
-//
-////    public void sendImageMessage(Long squadId, Long userId, List<MultipartFile> images) {
-////
-////        if(images.size() > 10) {
-////            throw new IllegalArgumentException("최대 10장까지 업로드 할수 있습니다.");
-////        }
-////
-////
-////        Squad squad = squadRepository.findById(squadId).orElseThrow(() -> new RuntimeException("Squad not found"));
-////        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
-////
-////        insertDateMessageIfNeeded(squad);
-////
-////        images.stream().map(file -> {
-////            s3FileService.upload(file);
-////        })
-////
-////    }
-//
-//
-//    private void insertDateMessageIfNeeded(Squad squad) {
-//
-//        LocalDate today = LocalDate.now();
-//
-//        LocalDateTime start = today.atStartOfDay();
-//        LocalDateTime end = today.plusDays(1).atStartOfDay().minusNanos(1);
-//
-//
-//        if(!squadChatRepository.existsByTodayDateChat(squad.getId(), start, end)) {
-//            SquadChat dateChat = SquadChat.date(squad, today);
-//            squadChatRepository.save(dateChat);
-//        }
-//    }
-//}
+package FeedStudy.StudyFeed.squad.service;
+
+
+import FeedStudy.StudyFeed.global.service.S3FileService;
+import FeedStudy.StudyFeed.squad.entity.Squad;
+import FeedStudy.StudyFeed.squad.entity.SquadChat;
+import FeedStudy.StudyFeed.squad.entity.SquadChatImage;
+import FeedStudy.StudyFeed.squad.repository.SquadChatRepository;
+import FeedStudy.StudyFeed.squad.repository.SquadRepository;
+import FeedStudy.StudyFeed.user.entity.User;
+import FeedStudy.StudyFeed.user.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class SquadChatService {
+
+    private final SquadRepository squadRepository;
+    private final UserRepository userRepository;
+    private final SquadChatRepository squadChatRepository;
+    private final S3FileService s3FileService;
+
+    public SquadChat sendTextMessage(Long squadId, Long userId, String message) {
+        Squad squad = squadRepository.findById(squadId).orElseThrow(() -> new RuntimeException("Squad not found"));
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+
+        insertDateMessageIfNeeded(squad);
+
+        SquadChat squadChat = SquadChat.text(user, squad, message);
+        return squadChatRepository.save(squadChat);
+    }
+
+    public List<String> uploadImagesAndReturnUrls(Long squadId, Long userId, List<MultipartFile> images) {
+
+        if(images.size() > 10) {
+            throw new IllegalArgumentException("최대 10장까지 업로드 할수 있습니다.");
+        }
+
+
+        Squad squad = squadRepository.findById(squadId).orElseThrow(() -> new RuntimeException("Squad not found"));
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+
+        insertDateMessageIfNeeded(squad);
+
+        List<SquadChatImage> uploaded = images.stream().map(file -> {
+            String ext = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
+            String fileName = UUID.randomUUID().toString().replace("-", "") + ext;
+            String fullUrl = s3FileService.uploadAndReturnUrl(file, fileName);
+            return new SquadChatImage(fileName, fullUrl);
+        }).toList();
+
+        SquadChat chat = SquadChat.image(user, squad, uploaded);
+        squadChatRepository.save(chat);
+
+        return uploaded.stream().map(SquadChatImage::getUrl).toList();
+    }
+
+    public SquadChat sendImageMessage(Long squadId, Long userId, List<String> imageUrls) {
+        Squad squad = squadRepository.findById(squadId).orElseThrow();
+        User user = userRepository.findById(userId).orElseThrow();
+
+        insertDateMessageIfNeeded(squad);
+
+        List<SquadChatImage> images = imageUrls.stream()
+                .map(url -> new SquadChatImage(null, url))
+                .toList();
+
+        SquadChat chat = SquadChat.image(user, squad, images);
+        return squadChatRepository.save(chat);
+    }
+
+
+
+    public void deleteMessage(Long chatId, Long userId) {
+        SquadChat chat = squadChatRepository.findById(chatId)
+                .orElseThrow(() -> new RuntimeException("메세지를 찾을수가 없습니다."));
+
+        if(!chat.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("삭제 권한이 없습니다.");
+        }
+
+        chat.delete();
+    }
+
+
+    public List<SquadChat> loadRecentMessages(Long squadId) {
+
+        return squadChatRepository.findLatestChats(squadId, PageRequest.of(0, 20));
+    }
+
+
+    public List<SquadChat> loadPreviousMessages(Long squadId, Long lastId) {
+        return squadChatRepository.findPreviousChats(squadId, lastId, PageRequest.of(0, 20));
+    }
+
+    private void insertDateMessageIfNeeded(Squad squad) {
+
+        LocalDate today = LocalDate.now();
+
+        LocalDateTime start = today.atStartOfDay();
+        LocalDateTime end = today.plusDays(1).atStartOfDay().minusNanos(1);
+
+
+        if(squadChatRepository.countByTodayDateChat(squad.getId(), start, end) > 0) {
+            SquadChat dateChat = SquadChat.date(squad, today);
+            squadChatRepository.save(dateChat);
+        }
+
+    }
+}

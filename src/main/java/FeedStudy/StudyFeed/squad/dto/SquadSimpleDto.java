@@ -30,7 +30,7 @@ public class SquadSimpleDto {
 
     public static SquadSimpleDto toDto(Squad squad) {
         StringBuilder sb = new StringBuilder(squad.getRegionMain());
-        if(squad.getRegionSub().equals("전체")) {
+        if(!squad.getRegionSub().equals("전체")) {
             sb.append(" ").append(squad.getRegionSub());
         }
 

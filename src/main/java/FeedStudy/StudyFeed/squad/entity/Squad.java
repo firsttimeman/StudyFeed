@@ -98,6 +98,21 @@ public class Squad extends BaseEntity {
 
     public void update(SquadRequest req) {
 
+
+        System.out.println("===== Squad 업데이트 시작 =====");
+        System.out.println("기존 title: " + this.title + " → 변경: " + req.getTitle());
+        System.out.println("기존 category: " + this.category + " → 변경: " + req.getCategory());
+        System.out.println("기존 regionMain: " + this.regionMain + " → 변경: " + req.getRegionMain());
+        System.out.println("기존 regionSub: " + this.regionSub + " → 변경: " + req.getRegionSub());
+        System.out.println("기존 timeSpecified: " + this.timeSpecified + " → 변경: " + req.getTimeSpecified());
+        System.out.println("기존 date: " + this.date + " → 변경: " + req.getDate());
+        System.out.println("기존 genderRequirement: " + this.genderRequirement + " → 변경: " + req.getGenderRequirement());
+        System.out.println("minAge: " + this.minAge + "변경 -> : " + req.getMinAge());
+        System.out.println("maxAge: " + this.maxAge + "변경 -> : " + req.getMaxAge());
+        System.out.println("time: " + this.time + "변경 -> : " + req.getTime());
+        System.out.println("jointype: " + this.joinType + "변경 -> : " + req.getJoinType());
+        System.out.println("maxParticipants: " + this.maxParticipants + "변경 -> : " + req.getMaxParticipants());
+
         this.category = req.getCategory();
         this.title = req.getTitle();
         this.description = req.getDescription();
@@ -113,6 +128,9 @@ public class Squad extends BaseEntity {
         this.minAge = req.getMinAge();
         this.maxAge = req.getMaxAge();
         this.date = req.getDate();
+
+
+        System.out.println("===== Squad 업데이트 완료 =====");
     }
 
 

@@ -68,7 +68,7 @@ public class AuthCodeService {
     }
 
     public String getAuthCode(String email) {
-        return redisTemplate.opsForValue().get("authCode: " + email);
+        return redisTemplate.opsForValue().get("emailByAuthCode: " + email);
     }
 
     public void removeAuthCode(String email) {

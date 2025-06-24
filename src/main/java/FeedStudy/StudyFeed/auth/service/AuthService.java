@@ -65,6 +65,7 @@ public class AuthService {
 
         String imageName = "avatar_placeholder.png";
         User user = new User(req, passwordEncoder.encode(req.getProviderType() + req.getProviderId()), imageName);
+        System.out.println(user);
         userRepository.save(user);
     }
 

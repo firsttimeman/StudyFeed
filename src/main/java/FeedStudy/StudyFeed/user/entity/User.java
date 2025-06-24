@@ -39,7 +39,7 @@ public class User extends BaseEntity {
 
 
 
-    @Column(unique = true, nullable = true)
+    @Column(nullable = true)
     private String nickName;
 
     @Column(nullable = false)
@@ -94,6 +94,7 @@ public class User extends BaseEntity {
         this.birthDate = LocalDate.parse(req.getBirthDate().toString(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         this.gender = req.getGender();
         this.userRole = UserRole.USER;
+        this.receiveEvent = req.getReceiveEvent().equals("Y");
     }
 
     public List<SimpleGrantedAuthority> getAuthorities() {

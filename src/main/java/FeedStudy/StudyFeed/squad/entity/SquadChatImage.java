@@ -15,15 +15,22 @@ import lombok.Setter;
 @NoArgsConstructor
 public class SquadChatImage extends BaseEntity {
 
-    private String uniqueName;
+    private String uniqueName; //UUID.jpg
 
-    private String originName;
+    private String originName; //abc.jpg
 
-    private String url;
+    private String url; //  https://s3.aws.com/abc/cat.png
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "squadchat_id")
     private SquadChat squadChat;
+
+    public SquadChatImage(String filename, String url) {
+        this.uniqueName = filename;
+        this.url = url;
+    }
+
+
 
     public void initSquadChat(SquadChat squadChat) {
         if(this.squadChat == null) {

@@ -26,17 +26,19 @@ public class SquadChat extends BaseEntity {
     @JoinColumn(name = "squad_id")
     private Squad squad;
 
-    private ChatType type = ChatType.TEXT;
-
     @Column(columnDefinition = "text")
     private String message;
 
+    private ChatType type = ChatType.TEXT;
+
     private int imageCount = 0;
 
-    private boolean deletable = true;
 
     @OneToMany(mappedBy = "squadChat", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SquadChatImage> images = new ArrayList<>();
+
+    private boolean deletable = true;
+
 
     public SquadChat(User user, Squad squad, ChatType type, String message, boolean deletable) {
         this.user = user;
@@ -56,6 +58,8 @@ public class SquadChat extends BaseEntity {
         squadChat.addImages(images);
         return squadChat;
     }
+
+
 
     public static SquadChat date(Squad squad, LocalDate date) {
         String[] days = { "월", "화", "수", "목", "금", "토", "일" };
@@ -79,5 +83,9 @@ public class SquadChat extends BaseEntity {
         });
     }
 
-
+    public void delete(){
+        this.message = "삭제된 메세지 입니다.";
+        this.deletable = false;
+        this.type = ChatType.TEXT;
+    }
 }
