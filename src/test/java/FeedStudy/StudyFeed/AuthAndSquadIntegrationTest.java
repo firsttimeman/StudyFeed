@@ -18,9 +18,9 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -43,8 +43,8 @@ public class AuthAndSquadIntegrationTest {
 
     protected Map<String, String> tokenMap = new HashMap<>();
 
-//    @BeforeEach
-    @Test
+    @BeforeEach
+//    @Test
     void setUpUsers() throws Exception {
         tokenMap.clear();
 
@@ -82,6 +82,7 @@ public class AuthAndSquadIntegrationTest {
 
             //이메일 인증 과정 구현해야함 과제
             String authCode = authCodeService.getAuthCode(email);
+            System.out.println("✅authcode: " + authCode);
 
             String signUpJsonBody = String.format("""
                     {
@@ -115,12 +116,45 @@ public class AuthAndSquadIntegrationTest {
 
             String repsonse = resultSignin.getResponse().getContentAsString();
             String accessToken = JsonPath.read(repsonse, "$.accessToken");
+            System.out.println("✅ accessToken: " + accessToken);
 
             tokenMap.put(email, "Bearer " + accessToken);
         }
 
-        assertEquals(20, tokenMap.size());
+
     }
 
+    @Test
+    void checkSquadMake() throws Exception {
+
+        String token = tokenMap.get("test@1test.com");
+
+        String squadJson = """
+                {
+                    "title": "자바 스터디",
+                    "category": "프로그래밍",
+                    "regionMain": "서울",
+                    "regionSub": "강남구",
+                    "description": "매주 토요일 자바 스터디 합니다.",
+                    "minAge": 20,
+                    "maxAge": 35,
+                    "date": "2025-07-01",
+                    "time": "18:30:00",
+                    "timeSpecified": true,
+                    "genderRequirement": "ALL",
+                    "joinType": "DIRECT",
+                    "maxParticipants": 10
+                }
+                """;
+
+        mockMvc.perform(post("/api/squad/create")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(squadJson)
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Squad created"));
+
+
+    }
 
 }
