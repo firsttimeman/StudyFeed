@@ -1,5 +1,7 @@
 package FeedStudy.StudyFeed.user.service;
 
+import FeedStudy.StudyFeed.global.exception.ErrorCode;
+import FeedStudy.StudyFeed.global.exception.exceptiontype.MailException;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +40,7 @@ public class MailService {
             MimeMessage mail = createMail(email, authCode);
             mailSender.send(mail);
         } catch (MessagingException e) {
-            throw new RuntimeException(e);
+            throw new MailException(ErrorCode.MAIL_SEND_FAILED);
         }
     }
 

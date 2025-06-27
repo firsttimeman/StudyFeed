@@ -1,6 +1,8 @@
 package FeedStudy.StudyFeed.squad.service;
 
 
+import FeedStudy.StudyFeed.global.exception.ErrorCode;
+import FeedStudy.StudyFeed.global.exception.exceptiontype.SquadException;
 import FeedStudy.StudyFeed.global.service.S3FileService;
 import FeedStudy.StudyFeed.squad.entity.Squad;
 import FeedStudy.StudyFeed.squad.entity.SquadChat;
@@ -29,8 +31,10 @@ public class SquadChatService {
     private final S3FileService s3FileService;
 
     public SquadChat sendTextMessage(Long squadId, Long userId, String message) {
-        Squad squad = squadRepository.findById(squadId).orElseThrow(() -> new RuntimeException("Squad not found"));
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        Squad squad = squadRepository.findById(squadId)
+                .orElseThrow(() -> new SquadException(ErrorCode.SQUAD_NOT_FOUND));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new SquadException(ErrorCode.USER_NOT_FOUND));
 
         insertDateMessageIfNeeded(squad);
 
@@ -41,12 +45,14 @@ public class SquadChatService {
     public List<String> uploadImagesAndReturnUrls(Long squadId, Long userId, List<MultipartFile> images) {
 
         if(images.size() > 10) {
-            throw new IllegalArgumentException("최대 10장까지 업로드 할수 있습니다.");
+            throw new SquadException(ErrorCode.IMAGE_UPLOAD_LIMIT_EXCEEDED);
         }
 
 
-        Squad squad = squadRepository.findById(squadId).orElseThrow(() -> new RuntimeException("Squad not found"));
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        Squad squad = squadRepository.findById(squadId)
+                .orElseThrow(() -> new SquadException(ErrorCode.SQUAD_NOT_FOUND));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new SquadException(ErrorCode.USER_NOT_FOUND));
 
         insertDateMessageIfNeeded(squad);
 
@@ -64,8 +70,10 @@ public class SquadChatService {
     }
 
     public SquadChat sendImageMessage(Long squadId, Long userId, List<String> imageUrls) {
-        Squad squad = squadRepository.findById(squadId).orElseThrow();
-        User user = userRepository.findById(userId).orElseThrow();
+        Squad squad = squadRepository.findById(squadId)
+                .orElseThrow(() -> new SquadException(ErrorCode.SQUAD_NOT_FOUND));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new SquadException(ErrorCode.USER_NOT_FOUND));
 
         insertDateMessageIfNeeded(squad);
 
@@ -81,10 +89,10 @@ public class SquadChatService {
 
     public void deleteMessage(Long chatId, Long userId) {
         SquadChat chat = squadChatRepository.findById(chatId)
-                .orElseThrow(() -> new RuntimeException("메세지를 찾을수가 없습니다."));
+                .orElseThrow(() -> new SquadException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
 
         if(!chat.getUser().getId().equals(userId)) {
-            throw new IllegalArgumentException("삭제 권한이 없습니다.");
+            throw new SquadException(ErrorCode.NOT_CHAT_OWNER);
         }
 
         chat.delete();

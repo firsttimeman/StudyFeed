@@ -1,6 +1,7 @@
 package FeedStudy.StudyFeed.global.exception;
 
 import FeedStudy.StudyFeed.global.exception.exceptiontype.AuthCodeException;
+import FeedStudy.StudyFeed.global.exception.exceptiontype.BaseException;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.MemberException;
 import lombok.Getter;
 import lombok.Setter;
@@ -20,19 +21,29 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
 
-    @ExceptionHandler(AuthCodeException.class)
-    public ResponseEntity<ErrorResponse> handleAuthCodeException(AuthCodeException e) {
-        System.err.println(e.getMessage());
-        return buildErrorResponse(e.getErrorCode(), HttpStatus.UNAUTHORIZED);
+    @ExceptionHandler(BaseException.class)
+    public ResponseEntity<ErrorResponse> handleBaseException(BaseException e) {
+        ErrorCode errorCode = e.getErrorCode();
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(new ErrorResponse(errorCode.getCode(), errorCode.getDescription(), LocalDateTime.now()));
     }
 
-    @ExceptionHandler(MemberException.class)
-    public ResponseEntity<ErrorResponse> handleMemberException(MemberException e) {
-        return buildErrorResponse(e.getErrorCode(), HttpStatus.BAD_REQUEST);
-    }
+
+
+//    @ExceptionHandler(AuthCodeException.class)
+//    public ResponseEntity<ErrorResponse> handleAuthCodeException(AuthCodeException e) {
+//        System.err.println(e.getMessage());
+//        return buildErrorResponse(e.getErrorCode(), HttpStatus.UNAUTHORIZED);
+//    }
+//
+//    @ExceptionHandler(MemberException.class)
+//    public ResponseEntity<ErrorResponse> handleMemberException(MemberException e) {
+//        return buildErrorResponse(e.getErrorCode(), HttpStatus.BAD_REQUEST);
+//    }
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException e) {
+        log.error("Unhandled exception", e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse("INTERNAL_SERVER_ERROR", e.getMessage(), LocalDateTime.now()));
     }
@@ -45,7 +56,7 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse("잘못된 validation", collect.toString(), LocalDateTime.now()));
-    }
+    } // Todo 설명 및 이해가 필요
 
 
 

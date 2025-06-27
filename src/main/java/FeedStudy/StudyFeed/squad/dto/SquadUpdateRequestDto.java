@@ -13,7 +13,7 @@ import java.time.LocalTime;
 
 @Getter
 @Setter
-public class SquadUpdateRequestDto implements RegionRequest {
+public class SquadUpdateRequestDto {
 
 
     private String squadName;

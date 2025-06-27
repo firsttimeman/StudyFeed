@@ -150,7 +150,8 @@ public class FeedService {
 
 
     public FeedResponseDto myFeeds (Long userId, Pageable pageable) {
-        User user = userRepository.findById(userId).orElseThrow(null);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
         Page<Feed> feeds = feedRepository.findByUser(user, pageable);
         List<FeedSimpleDto> feedDtos = feeds.getContent().stream()
                 .map(f -> FeedSimpleDto.toDto(f, userId, hasFeedLike(user, f))).toList();
@@ -177,9 +178,9 @@ public class FeedService {
 
     public DataResponse otherFeeds(Long userId, Long otherId, Pageable pageable) {
         User other = userRepository.findById(otherId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-
+                .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
         Page<Feed> feeds = feedRepository.findByUser(other, pageable);
         List<FeedSimpleDto> feedDtos = feeds.getContent().stream()
                 .map(f -> FeedSimpleDto.toDto(f, userId, hasFeedLike(user, f))).toList();
@@ -266,7 +267,7 @@ public class FeedService {
 
                     // 안정성 검사
                     if (originalFilename == null || !originalFilename.contains(".")) {
-                        throw new IllegalArgumentException("파일명이 null이거나 확장자가 없습니다.");
+                        throw new FeedException(ErrorCode.INVALID_FILE_NAME);
                     }
 
                     // FeedImage 생성 및 uniqueName 생성
@@ -278,7 +279,7 @@ public class FeedService {
                     // URL 생성
                     String imgUrl = s3FileService.getFullUrl(feedImage.getUniqueName());
                     if (imgUrl == null) {
-                        throw new IllegalStateException("이미지 URL이 null입니다.");
+                        throw new FeedException(ErrorCode.IMAGE_URL_GENERATION_FAILED);
                     }
 
                     // URL 세팅
@@ -318,7 +319,8 @@ public class FeedService {
 
     public void writeComment(User user, FeedCommentRequestDto req) {
         System.out.println(req);
-        Feed feed = feedRepository.findById(req.getFeedPid()).orElseThrow();
+        Feed feed = feedRepository.findById(req.getFeedPid())
+                .orElseThrow(() -> new FeedException(ErrorCode.FEED_NOT_FOUND));
 
         FeedComment parentComment = req.getFeedCommentPid() != null
                 ? feedCommentRepository.findById(req.getFeedCommentPid())
@@ -345,11 +347,11 @@ public class FeedService {
 
     public void deleteComment(Long userId, Long commentId) {
         FeedComment comment = feedCommentRepository.
-                findByParentComment_IdAndId(commentId, userId).orElseThrow(() ->
-                        new IllegalArgumentException("댓글이 존재하지 않습니다."));
+                findByParentComment_IdAndId(commentId, userId).
+                orElseThrow(() -> new FeedException(ErrorCode.COMMENT_NOT_FOUND));
 
         if(!comment.getUser().getId().equals(userId)) {
-            throw new IllegalArgumentException("삭제 권한이 없습니다.");
+            throw new FeedException(ErrorCode.NOT_COMMENT_OWNER);
         }
 
         if(comment.getParentComment() == null) {

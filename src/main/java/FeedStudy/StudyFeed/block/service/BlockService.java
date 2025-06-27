@@ -2,6 +2,7 @@ package FeedStudy.StudyFeed.block.service;
 
 import FeedStudy.StudyFeed.block.dto.BlockSimpleDto;
 import FeedStudy.StudyFeed.block.entity.Block;
+import FeedStudy.StudyFeed.global.exception.exceptiontype.BlockException;
 import FeedStudy.StudyFeed.user.entity.User;
 import FeedStudy.StudyFeed.global.exception.ErrorCode;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.MemberException;
@@ -24,11 +25,12 @@ public class BlockService   {
     public void createBlock(User user, User other) {
 
         if(blockRepository.findByBlockerAndBlocked(user, other).isPresent()) {
-            throw new IllegalArgumentException("이미 차단된 사용자 입니다.");
+            throw new BlockException(ErrorCode.BLOCK_ALREADY_EXISTS);
         }
 
         if(user.getId() == other.getId()) {
-            throw new IllegalArgumentException("자기 자신을 차단할수 없습니다.");
+            throw new BlockException(ErrorCode.BLOCK_SELF_NOT_ALLOWED);
+
         }
 
         Block block = new Block(user, other);
@@ -38,7 +40,7 @@ public class BlockService   {
     @Transactional
     public void removeBlock(User user, User other) {
         Block block = blockRepository.findByBlockerAndBlocked(user, other)
-                .orElseThrow(() -> new IllegalArgumentException("차단되어 있지 않습니다."));
+                .orElseThrow(() -> new BlockException(ErrorCode.BLOCK_NOT_FOUND));
 
         blockRepository.delete(block);
     }

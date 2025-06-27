@@ -1,9 +1,11 @@
 package FeedStudy.StudyFeed.squad.dto;
 
-import FeedStudy.StudyFeed.global.dto.RegionRequest;
-import FeedStudy.StudyFeed.global.type.JoinType;
 import FeedStudy.StudyFeed.global.type.Gender;
-import jakarta.validation.constraints.*;
+import FeedStudy.StudyFeed.global.type.JoinType;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -15,11 +17,22 @@ import java.time.LocalTime;
 @Setter
 @ToString
 //implements RegionRequest
-public class SquadRequest  {
+public class SquadRequest {
 
+    @Size(min = 1, max = 50)
+    private String title;
 
-    private String title, category, regionMain, regionSub, description;
+    @NotNull
+    private String category;
+    @NotNull
+    private String regionMain;
+    @NotNull
+    private String regionSub;
 
+    @Size(max = 1000)
+    private String description;
+
+    @Min(50)
     private int minAge;
 
     private int maxAge;
@@ -35,7 +48,6 @@ public class SquadRequest  {
     private JoinType joinType;
 
     private int maxParticipants;
-
 
 
 }

@@ -2,6 +2,7 @@ package FeedStudy.StudyFeed.squad.controller;
 
 import FeedStudy.StudyFeed.global.dto.DataResponse;
 import FeedStudy.StudyFeed.squad.dto.*;
+import FeedStudy.StudyFeed.squad.entity.Squad;
 import FeedStudy.StudyFeed.squad.service.SquadService;
 import FeedStudy.StudyFeed.user.entity.User;
 import jakarta.validation.Valid;
@@ -31,22 +32,24 @@ public class SquadController {
      */
     @PostMapping("/create")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<String> createSquad(@AuthenticationPrincipal User user,
+    public ResponseEntity<?> createSquad(@AuthenticationPrincipal User user,
                                               @Valid @RequestBody SquadRequest requestDto) {
         System.out.println(requestDto);
-        squadService.createSquad(requestDto, user);
-        return ResponseEntity.ok("Squad created");
+        Squad squad = squadService.createSquad(requestDto, user);
+        return ResponseEntity.ok(SquadDto.from(squad));
     }
 
 
 
     @PutMapping("/modify/{id}")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<String> updateSquad(@PathVariable Long id, @AuthenticationPrincipal User user,
-                                              @RequestBody SquadRequest req) {
-        squadService.updateSquad(id, user, req);
-        return ResponseEntity.ok("Squad updated");
+    public ResponseEntity<SquadDto> updateSquad(@PathVariable Long id, @AuthenticationPrincipal User user,
+                                                @RequestBody @Valid SquadRequest req) {
+        Squad squad = squadService.updateSquad(id, user, req);
+        return ResponseEntity.ok(SquadDto.from(squad));
     }
+
+
 
     @DeleteMapping("/delete/{id}")
     @PreAuthorize("hasRole('USER')")
@@ -59,11 +62,11 @@ public class SquadController {
 
     @GetMapping("/mine")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<String> mySquads(@AuthenticationPrincipal User user,
-                                       @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC, size = 10)
+    public ResponseEntity<DataResponse> mySquads(@AuthenticationPrincipal User user,
+                                                 @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC, size = 10)
                                        Pageable pageable) {
         DataResponse dataResponse = squadService.mySquad(user, pageable);
-        return ResponseEntity.ok(dataResponse.toString());
+        return ResponseEntity.ok(dataResponse);
     }
 
     @GetMapping("/home")

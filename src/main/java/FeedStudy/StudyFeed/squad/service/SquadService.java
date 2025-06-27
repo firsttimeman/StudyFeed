@@ -2,6 +2,8 @@ package FeedStudy.StudyFeed.squad.service;
 
 import FeedStudy.StudyFeed.block.repository.BlockRepository;
 import FeedStudy.StudyFeed.global.dto.DataResponse;
+import FeedStudy.StudyFeed.global.exception.ErrorCode;
+import FeedStudy.StudyFeed.global.exception.exceptiontype.SquadException;
 import FeedStudy.StudyFeed.global.jwt.JwtUtil;
 import FeedStudy.StudyFeed.global.service.FirebaseMessagingService;
 import FeedStudy.StudyFeed.global.type.AttendanceStatus;
@@ -25,10 +27,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,40 +45,38 @@ public class SquadService extends ASquadService {
 
 
     @Transactional
-    public void createSquad(SquadRequest req, User user) {
+    public Squad createSquad(SquadRequest req, User user) {
+
+        if(req.getMinAge() > req.getMaxAge()) {
+            throw new SquadException(ErrorCode.AGE_RANGE_INVALID);
+        }
+
+
 
         Squad squad = Squad.create(user ,req);
+
         squad = squadRepository.save(squad);
 
         SquadMember squadMember = SquadMember.create(user, squad);
         squadMemberRepository.save(squadMember);
-
+        return squad;
     }
 
     @Transactional
-    public void updateSquad(Long squadId, User user, SquadRequest req) {
-
-        System.out.println("1");
+    public Squad updateSquad(Long squadId, User user, SquadRequest req) {
         Squad squad = findSquad(squadId);
-
-        System.out.println("2");
         validateOwner(user, squad);
 
-        System.out.println("3");
         validateAgeRange(squad, req);
 
-        System.out.println("4");
         validateGender(squad, req);
 
-        System.out.println("5");
         validateMemberCount(squad, req);
 
-        System.out.println("6");
         squad.update(req);
 
         squadRepository.save(squad);
-        System.out.println("7");
-
+        return squad;
     }
 
     @Transactional
@@ -104,50 +101,39 @@ public class SquadService extends ASquadService {
     public Map<String, String> joinOrGetChatToken(User user, Long squadId) {
 
         Squad squad = squadRepository.findByIdWithParticipants(squadId)
-                .orElseThrow(() -> new IllegalArgumentException("모임이 존재하지 않습니다"));
+                .orElseThrow(() -> new SquadException(ErrorCode.SQUAD_NOT_FOUND));
 
         Optional<SquadMember> members = squadMemberRepository.findBySquadAndUser(squad, user);
 
         if(members.isPresent()) {
             SquadMember squadMember = members.get();
 
-            if(squadMember.getAttendanceStatus() == AttendanceStatus.JOINED) {
-                String chatToken = chatTokenProvider.createChatToken(user, squad);
-                return Map.of("status", "joined", "chatToken", chatToken);
-            }
-
-            if(squadMember.getAttendanceStatus() == AttendanceStatus.PENDING) {
-                return Map.of("status", "pending");
-            }
-
-            if(squadMember.getAttendanceStatus() == AttendanceStatus.REJECTED) {
-                throw new IllegalArgumentException("참여가 거절된 모임입니다.");
-            }
-
-            if(squadMember.getAttendanceStatus() == AttendanceStatus.KICKED_OUT) {
-                throw new IllegalArgumentException("강제 퇴장된 유저입니다.");
-            }
+            return switch (squadMember.getAttendanceStatus()) {
+                case JOINED -> Map.of("status", "joined", "chatToken", chatTokenProvider.createChatToken(user, squad));
+                case PENDING -> Map.of("status", "pending");
+                case REJECTED -> throw new SquadException(ErrorCode.SQUAD_REJECTED);
+                case KICKED_OUT -> throw new SquadException(ErrorCode.SQUAD_KICKED_OUT);
+            };
         }
 
         joinSquad(user, squad);
 
         return Map.of("status", squad.getJoinType().equals(JoinType.APPROVAL) ? "requested" : "approved");
+
     }
-
-
 
     public DataResponse homeSquad(User user, Pageable pageable, SquadFilterRequest req) {
 
         List<User> excludedUser = new ArrayList<>();
-        if(user != null) {
+        if (user != null) {
             excludedUser = getExcludedUsers(user);
         }
         Page<Squad> squads;
 
         LocalDate sevenDaysAgo = LocalDate.now().minusDays(7);
 
-        if(excludedUser.isEmpty()) {
-          squads = squadRepository.findFilteredSquads(req.getCategory(), req.getRegionMain(),
+        if (excludedUser.isEmpty()) {
+            squads = squadRepository.findFilteredSquads(req.getCategory(), req.getRegionMain(),
                     req.getRegionSub(), req.isRecruitingOnly(), sevenDaysAgo, pageable);
 
         } else {
@@ -164,13 +150,13 @@ public class SquadService extends ASquadService {
 
     public List<UserSimpleDto> getParticipants(User user, Long squadId) {
         Squad squad = squadRepository.findById(squadId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 모임을 찾을 수 없습니다."));
+                .orElseThrow(() -> new SquadException(ErrorCode.SQUAD_NOT_FOUND));
 
         if (squad.getJoinType().equals(JoinType.DIRECT)) {
-            throw new AccessDeniedException("승인제가 아닙니다.");
+            throw new SquadException(ErrorCode.NOT_APPROVAL_SQUAD);
         }
         if (user.getId() != squad.getUser().getId()) {
-            throw new IllegalArgumentException("스쿼드 장이 아닙니다.");
+            throw new SquadException(ErrorCode.NOT_SQUAD_OWNER);
         }
         return squad.getMembers().stream()
                 .filter(member -> member.getAttendanceStatus() == AttendanceStatus.PENDING)
@@ -216,38 +202,34 @@ public class SquadService extends ASquadService {
     public void approveParticipant(User user, Long userId, Long squadId) {
         Squad squad = findSquad(squadId);
         User members = findUser(userId);
-
-        if (squad.getUser().getId() != user.getId()) {
-            throw new IllegalArgumentException("방장이 아닙니다. 승인 권한이 없습니다.");
+        if (!Objects.equals(squad.getUser().getId(), user.getId())) {
+            throw new SquadException(ErrorCode.NOT_SQUAD_OWNER);
         }
-
-        if(squad.getMembers().stream()
-                .filter(member -> member.getAttendanceStatus() == AttendanceStatus.JOINED)
-                .count() >= squad.getMaxParticipants()) {
-            throw new IllegalArgumentException("참여 인원이 찼습니다.");
+        long joinedCount = squad.getMembers().stream()
+                .filter(member -> member.getAttendanceStatus() == AttendanceStatus.JOINED).count();
+        if (joinedCount >= squad.getMaxParticipants()) {
+            throw new SquadException(ErrorCode.SQUAD_FULL);
         }
-
-        SquadMember squadMember = squad.getMembers().stream().filter(m -> m.getUser() == members)
-                .findAny().orElseThrow();
+        SquadMember squadMember = squad.getMembers().stream()
+                .filter(m -> m.getUser().equals(members))
+                .findAny().orElseThrow(() -> new SquadException(ErrorCode.SQUAD_MEMBER_NOT_FOUND));
         squadMember.setAttendanceStatus(AttendanceStatus.JOINED);
         squadMemberRepository.save(squadMember);
-
     }
 
     public void rejectParticipant(User user, Long userId, Long squadId) {
         Squad squad = findSquad(squadId);
-
         User members = findUser(userId);
-
-        if (squad.getUser().getId() != user.getId()) {
-            throw new IllegalArgumentException("방장이 아닙니다. 승인 권한이 없습니다.");
+        if (!Objects.equals(squad.getUser().getId(), user.getId())) {
+            throw new SquadException(ErrorCode.NOT_SQUAD_OWNER);
         }
-
-        SquadMember squadMember = squad.getMembers().stream().filter(m -> m.getUser() == members)
-                .findAny().orElseThrow();
+        SquadMember squadMember = squad.getMembers().stream()
+                .filter(m -> m.getUser().equals(members))
+                .findAny().orElseThrow(() -> new SquadException(ErrorCode.SQUAD_MEMBER_NOT_FOUND));
         squadMember.setAttendanceStatus(AttendanceStatus.REJECTED);
         squadMemberRepository.save(squadMember);
     }
+
 
     public void kickOffParticipant(User user, Long userId, Long squadId) {
         Squad squad = findSquad(squadId);
@@ -255,7 +237,7 @@ public class SquadService extends ASquadService {
         User members = findUser(userId);
 
         if (squad.getUser().getId() != user.getId()) {
-            throw new IllegalArgumentException("방장이 아닙니다. 승인 권한이 없습니다.");
+            throw new SquadException(ErrorCode.NOT_SQUAD_OWNER);
         }
 
         SquadMember participant = squad.getMembers().stream().filter(m -> m.getUser() == members)

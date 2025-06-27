@@ -23,6 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.lang.reflect.Member;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -60,7 +61,7 @@ public class AuthService {
         }
 
         if(userRepository.existsByEmail(req.getEmail())) {
-            throw new IllegalArgumentException("Email already exists");
+            throw new MemberException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
         String imageName = "avatar_placeholder.png";

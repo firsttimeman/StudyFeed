@@ -40,10 +40,8 @@ public class Squad extends BaseEntity {
 
     private int maxParticipants, minAge, maxAge;
 
-    @Column(nullable = false)
     private LocalDate date;
 
-    @Column(nullable = false)
     private LocalTime time;
 
 

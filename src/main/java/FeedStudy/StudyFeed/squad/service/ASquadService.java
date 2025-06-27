@@ -1,6 +1,9 @@
 package FeedStudy.StudyFeed.squad.service;
 
 import FeedStudy.StudyFeed.block.repository.BlockRepository;
+import FeedStudy.StudyFeed.global.exception.ErrorCode;
+import FeedStudy.StudyFeed.global.exception.exceptiontype.MemberException;
+import FeedStudy.StudyFeed.global.exception.exceptiontype.SquadException;
 import FeedStudy.StudyFeed.global.service.FirebaseMessagingService;
 import FeedStudy.StudyFeed.global.type.AttendanceStatus;
 import FeedStudy.StudyFeed.global.type.Gender;
@@ -11,6 +14,7 @@ import FeedStudy.StudyFeed.squad.repository.SquadRepository;
 import FeedStudy.StudyFeed.user.entity.User;
 import FeedStudy.StudyFeed.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -26,31 +30,32 @@ public abstract class ASquadService {
 
     public Squad findSquad(Long squadId) {
         return squadRepository.findById(squadId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 모임을 찾을 수 없습니다."));
+                .orElseThrow(() -> new SquadException(ErrorCode.SQUAD_NOT_FOUND));
     }
 
     public User findUser(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다."));
+                .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
     }
 
     public void validateOwner(User user, Squad squad) {
         if (user.getId() != squad.getUser().getId()) {
-            throw new IllegalArgumentException("사용자가 아닙니다.");
+            throw new SquadException(ErrorCode.NOT_SQUAD_OWNER);
         }
     }
 
     public void validateAgeRange(Squad squad, SquadRequest req) {
         int minAge = req.getMinAge();
         int maxAge = req.getMaxAge();
-        if (squad.getMembers().stream()
+        boolean hasInvalid = squad.getMembers().stream()
                 .filter(member -> member.getAttendanceStatus() == AttendanceStatus.JOINED
-                        && member.getUser().getId() != squad.getUser().getId())
-                .anyMatch(member -> isAgeValidate(minAge, maxAge, member.getUser().getAge()))) {
-            throw new IllegalArgumentException("이미 참여 중인 다른 나이대의 멤버가 있어서 수정이 어려워요.");
-
+                                  && !member.getUser().getId().equals(squad.getUser().getId()))
+                .anyMatch(member -> isAgeValidate(minAge, maxAge, member.getUser().getAge()));
+        if (hasInvalid) {
+            throw new SquadException(ErrorCode.SQUAD_AGE_CONFLICT);
         }
     }
+
 
 
     public void validateAgeRange(User user, Squad squad) {
@@ -58,23 +63,22 @@ public abstract class ASquadService {
         int maxAge = squad.getMaxAge();
         int age = user.getAge();
         if(isAgeValidate(minAge, maxAge, age)) {
-            throw new IllegalArgumentException("참여 가능한 연령이 아닙니다.");
+            throw new SquadException(ErrorCode.AGE_NOT_ALLOWED);
         }
 
     }
 
     public void validateGender(Squad squad, SquadRequest req) {
-
-        if(squad.getMembers().stream()
-                .anyMatch(member -> isGenderValidate(member.getUser(), req.getGenderRequirement()))) {
-            throw new IllegalArgumentException("이미 참여 중인 다른 성별의 멤버가 있어서 수정이 어렵습니다.");
-
+        boolean hasInvalid = squad.getMembers().stream()
+                .anyMatch(member -> isGenderValidate(member.getUser(), req.getGenderRequirement()));
+        if (hasInvalid) {
+            throw new SquadException(ErrorCode.SQUAD_GENDER_CONFLICT);
         }
     }
 
     public void validateGender(User user, Squad squad) {
         if(isGenderValidate(user, squad.getGenderRequirement())) {
-            throw new IllegalArgumentException("참여 가능한 성별이 아닙니다.");
+            throw new SquadException(ErrorCode.GENDER_NOT_ALLOWED);
         }
     }
 
@@ -84,41 +88,49 @@ public abstract class ASquadService {
                 .count();
 
         if(joinedCount > req.getMaxParticipants()) {
-            throw new IllegalArgumentException(String.format("이미 %d명이 참여중이라 인원 수정이 어렵습니다.", joinedCount));
+            throw new SquadException(ErrorCode.SQUAD_MEMBER_COUNT_EXCEEDED);
         }
     }
 
 
     public void validateDeleteMember(Squad squad, boolean isForcedDelete) {
         if (!isForcedDelete && !squad.isOnlyOneLeft()) {
-            throw new IllegalArgumentException("멤버를 모두 내보낸 다음 삭제할 수 있어요. 멤버 닉네임 옆의 '관리'를 눌러주세요");
+            throw new SquadException(ErrorCode.SQUAD_DELETE_NOT_ALLOWED);
         }
     }
 
     public void validateAlreadyJoined(User user, Squad squad) {
-        if(squad.getMembers().stream().anyMatch(member -> member.getUser() == user)) {
-            throw new IllegalArgumentException("이미 참여중인 사용자입니다.");
+        boolean alreadyJoined = squad.getMembers().stream()
+                .anyMatch(member -> member.getUser().equals(user));
+        if (alreadyJoined) {
+            throw new SquadException(ErrorCode.ALREADY_JOINED);
         }
     }
 
     public void validateIsClosed(Squad squad) {
-        if(squad.isClosed()) {
-            throw new IllegalArgumentException("마감된 모임입니다.");
+        if (squad.isClosed()) {
+            throw new SquadException(ErrorCode.SQUAD_CLOSED);
         }
     }
 
+
+
     public void validateTimePassed(Squad squad) {
-        if(LocalDateTime.of(squad.getDate(), squad.getTime() == null ? LocalTime.of(23, 59, 59) : squad.getTime())
-                .isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("종료된 모임입니다.");
+        LocalDateTime endTime = LocalDateTime.of(
+                squad.getDate(),
+                squad.getTime() == null ? LocalTime.of(23, 59, 59) : squad.getTime()
+        );
+        if (endTime.isBefore(LocalDateTime.now())) {
+            throw new SquadException(ErrorCode.SQUAD_TIME_PASSED);
         }
     }
 
     public void validateFullJoined(Squad squad) {
-        if(squad.getMembers().stream()
+        long joined = squad.getMembers().stream()
                 .filter(m -> m.getAttendanceStatus() == AttendanceStatus.JOINED)
-                .count() >= squad.getMaxParticipants()) {
-            throw new IllegalArgumentException("참여 인원이 찼습니다.");
+                .count();
+        if (joined >= squad.getMaxParticipants()) {
+            throw new SquadException(ErrorCode.SQUAD_FULL);
         }
     }
 
@@ -127,6 +139,8 @@ public abstract class ASquadService {
         return gender == Gender.FEMALE && user.getGender().equals("여성")
                 || gender == Gender.MALE && user.getGender().equals("남성");
     }
+
+
 
 
 

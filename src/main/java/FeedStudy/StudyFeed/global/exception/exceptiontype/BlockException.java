@@ -2,9 +2,9 @@ package FeedStudy.StudyFeed.global.exception.exceptiontype;
 
 import FeedStudy.StudyFeed.global.exception.ErrorCode;
 
-public class TokenException extends BaseException {
+public class BlockException extends BaseException{
 
-    public TokenException(ErrorCode errorCode) {
+    public BlockException(ErrorCode errorCode) {
         super(errorCode);
     }
 }

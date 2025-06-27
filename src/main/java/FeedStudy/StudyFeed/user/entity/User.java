@@ -46,8 +46,18 @@ public class User extends BaseEntity {
     private LocalDate birthDate;
 
 
-    @Column(nullable = true, columnDefinition = "BOOLEAN DEFAULT false")
-    private Boolean  receiveEvent, feedAlarm, feedLikeAlarm, squadChatAlarm, chatroomAlarm, squadNotifyAlarm;
+    @Column(nullable = true)
+    private Boolean  receiveEvent = false;
+    @Column(nullable = true)
+    private Boolean feedAlarm = false;
+    @Column(nullable = true)
+    private Boolean feedLikeAlarm = false;
+    @Column(nullable = true)
+    private Boolean squadChatAlarm = false;
+    @Column(nullable = true)
+    private Boolean chatroomAlarm = false;
+    @Column(nullable = true)
+    private Boolean squadNotifyAlarm = false;
 
 
     private int reportCount = 0;

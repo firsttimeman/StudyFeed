@@ -4,12 +4,10 @@ import FeedStudy.StudyFeed.global.exception.ErrorCode;
 import lombok.Getter;
 
 @Getter
-public class SquadException extends RuntimeException{
+public class SquadException extends BaseException{
 
-    private final ErrorCode errorCode;
 
     public SquadException(ErrorCode errorCode) {
-        super(errorCode.getDescription());
-        this.errorCode = errorCode;
+        super(errorCode);
     }
 }

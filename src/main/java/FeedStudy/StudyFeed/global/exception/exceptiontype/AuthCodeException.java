@@ -4,12 +4,10 @@ import FeedStudy.StudyFeed.global.exception.ErrorCode;
 import lombok.Getter;
 
 @Getter
-public class AuthCodeException  extends RuntimeException{
+public class AuthCodeException  extends BaseException{
 
-    private final ErrorCode errorCode;
 
     public AuthCodeException(ErrorCode errorCode) {
-        super(errorCode.getDescription());
-        this.errorCode = errorCode;
+        super(errorCode);
     }
 }

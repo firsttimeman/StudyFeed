@@ -5,11 +5,9 @@ import lombok.Getter;
 
 @Getter
 
-public class KeyException extends RuntimeException {
-    private final ErrorCode errorCode;
+public class KeyException extends BaseException {
 
     public KeyException(ErrorCode errorCode) {
-        super(errorCode.getDescription());
-        this.errorCode = errorCode;
+        super(errorCode);
     }
 }

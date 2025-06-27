@@ -173,7 +173,7 @@ public class UserService {
     public void updateNickname(User user, String nickName) {
 
         if(userRepository.existsByIdNotAndNickName(user.getId(), nickName)) {
-            throw new IllegalArgumentException("중복되는 닉네임이 존재합니다.");
+            throw new MemberException(ErrorCode.NICKNAME_ALREADY_EXISTS);
         }
 
         user.setNickName(nickName);
@@ -196,7 +196,7 @@ public class UserService {
 
 
     public Boolean hasNickName(User user) {
-        return user.getNickName() != null;
+        return !(user.getNickName() == null || user.getNickName().equals(""));
     }
 
 
