@@ -4,6 +4,7 @@ import FeedStudy.StudyFeed.feed.dto.*;
 import FeedStudy.StudyFeed.feed.service.FeedService;
 import FeedStudy.StudyFeed.global.dto.DataResponse;
 import FeedStudy.StudyFeed.user.entity.User;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
@@ -28,7 +29,7 @@ public class FeedController {
      */
     @PostMapping("/create")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<String> createFeed(@AuthenticationPrincipal User user, @ModelAttribute FeedRequest request) {
+    public ResponseEntity<String> createFeed(@AuthenticationPrincipal User user, @Valid @ModelAttribute FeedRequest request) {
         feedService.create(user, request);
         return ResponseEntity.ok("Success");
     }
@@ -42,6 +43,8 @@ public class FeedController {
         FeedDetailResponse response = feedService.getFeed(user, feedId);
         return ResponseEntity.ok(response);
     }
+
+
 
     @GetMapping("/comment/{commentId}/replies")
     @PreAuthorize("hasRole('USER')")

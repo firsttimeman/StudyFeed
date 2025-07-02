@@ -70,8 +70,8 @@ public class UserController {
      * 닉네임 null 일시 새로 만들기
      */
     @GetMapping("/generate_nickname")
-    public ResponseEntity<String> makeNickName(@AuthenticationPrincipal User user) {
-        userService.makeNickName(user);
+    public ResponseEntity<String> makeNickName() {
+        userService.makeNickName();
         return ResponseEntity.ok("NickName 생성 완료");
     }
 

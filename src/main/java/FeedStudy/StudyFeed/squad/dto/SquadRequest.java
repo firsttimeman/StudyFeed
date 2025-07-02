@@ -2,6 +2,7 @@ package FeedStudy.StudyFeed.squad.dto;
 
 import FeedStudy.StudyFeed.global.type.Gender;
 import FeedStudy.StudyFeed.global.type.JoinType;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -39,6 +40,7 @@ public class SquadRequest {
 
     private LocalDate date;
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private LocalTime time;
 
     private Boolean timeSpecified;

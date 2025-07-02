@@ -6,6 +6,7 @@ import FeedStudy.StudyFeed.global.exception.ErrorCode;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.SquadException;
 import FeedStudy.StudyFeed.global.jwt.JwtUtil;
 import FeedStudy.StudyFeed.global.service.FirebaseMessagingService;
+import FeedStudy.StudyFeed.global.service.RegionService;
 import FeedStudy.StudyFeed.global.type.AttendanceStatus;
 import FeedStudy.StudyFeed.global.type.JoinType;
 import FeedStudy.StudyFeed.squad.dto.SquadDetailDto;
@@ -23,7 +24,6 @@ import FeedStudy.StudyFeed.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -36,21 +36,27 @@ public class SquadService extends ASquadService {
 
     private final JwtUtil jwtUtil;
     private final ChatTokenProvider chatTokenProvider;
+    private final RegionService regionService;
 
-    public SquadService(SquadRepository squadRepository, UserRepository userRepository, SquadMemberRepository squadMemberRepository, FirebaseMessagingService firebaseMessagingService, BlockRepository blockRepository, JwtUtil jwtUtil, ChatTokenProvider chatTokenProvider) {
+    public SquadService(SquadRepository squadRepository, UserRepository userRepository,
+                        SquadMemberRepository squadMemberRepository, FirebaseMessagingService firebaseMessagingService,
+                        BlockRepository blockRepository, JwtUtil jwtUtil, ChatTokenProvider chatTokenProvider,
+                        RegionService regionService) {
         super(squadRepository, userRepository, squadMemberRepository, firebaseMessagingService, blockRepository);
         this.jwtUtil = jwtUtil;
         this.chatTokenProvider = chatTokenProvider;
+        this.regionService = regionService;
     }
 
 
     @Transactional
     public Squad createSquad(SquadRequest req, User user) {
 
+        regionService.checkRegion(req.getRegionMain(), req.getRegionSub());
+
         if(req.getMinAge() > req.getMaxAge()) {
             throw new SquadException(ErrorCode.AGE_RANGE_INVALID);
         }
-
 
 
         Squad squad = Squad.create(user ,req);
@@ -65,12 +71,17 @@ public class SquadService extends ASquadService {
     @Transactional
     public Squad updateSquad(Long squadId, User user, SquadRequest req) {
         Squad squad = findSquad(squadId);
+
+        boolean regionChanged = !Objects.equals(squad.getRegionMain(), req.getRegionMain())
+                    || !Objects.equals(squad.getRegionSub(), req.getRegionSub());
+
+        if(regionChanged) {
+            regionService.checkRegion(req.getRegionMain(), req.getRegionSub());
+        }
+
         validateOwner(user, squad);
-
         validateAgeRange(squad, req);
-
         validateGender(squad, req);
-
         validateMemberCount(squad, req);
 
         squad.update(req);
@@ -123,7 +134,7 @@ public class SquadService extends ASquadService {
     }
 
     public DataResponse homeSquad(User user, Pageable pageable, SquadFilterRequest req) {
-
+        // todo 이건 안해도 되는거 아닌가????? 검증이 repo에서 하고 있는데???
         List<User> excludedUser = new ArrayList<>();
         if (user != null) {
             excludedUser = getExcludedUsers(user);
@@ -241,14 +252,14 @@ public class SquadService extends ASquadService {
         }
 
         SquadMember participant = squad.getMembers().stream().filter(m -> m.getUser() == members)
-                .findAny().orElseThrow();
+                .findAny().orElseThrow(() -> new SquadException(ErrorCode.SQUAD_MEMBER_NOT_FOUND));
         participant.setAttendanceStatus(AttendanceStatus.KICKED_OUT);
         squad.decreaseCurrentCount();
         squadRepository.save(squad);
         squadMemberRepository.save(participant);
     }
 
-    public void kickOffParticipant(User user, Long squadId) {
+    public void leaveSquad(User user, Long squadId) {
         Squad squad = findSquad(squadId);
 
         SquadMember squadMember = squad.getMembers().stream()

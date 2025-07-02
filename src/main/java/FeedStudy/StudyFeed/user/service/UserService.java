@@ -163,7 +163,7 @@ public class UserService {
         userRepository.save(user);
     }
 
-    public String makeNickName(User user) {
+    public String makeNickName() {
 
 
         String generateNickName = generateUniqueNickName();

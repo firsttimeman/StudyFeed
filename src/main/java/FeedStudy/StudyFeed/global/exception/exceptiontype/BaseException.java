@@ -4,7 +4,7 @@ import FeedStudy.StudyFeed.global.exception.ErrorCode;
 import lombok.Getter;
 
 @Getter
-public class BaseException extends RuntimeException{
+public abstract class BaseException extends RuntimeException{
     private final ErrorCode errorCode;
 
     protected BaseException(ErrorCode errorCode) {

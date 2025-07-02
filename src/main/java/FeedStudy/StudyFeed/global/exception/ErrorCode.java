@@ -74,7 +74,11 @@ public enum ErrorCode {
     CHAT_MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHAT_MESSAGE_NOT_FOUND", "메시지를 찾을 수 없습니다."),
     NOT_CHAT_OWNER(HttpStatus.FORBIDDEN, "NOT_CHAT_OWNER", "메시지 삭제 권한이 없습니다."),
     IMAGE_UPLOAD_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "IMAGE_UPLOAD_LIMIT_EXCEEDED", "최대 10장까지 업로드할 수 있습니다."),
-    SQUAD_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "SQUAD_MEMBER_NOT_FOUND", "모임 멤버를 찾을 수 없습니다.");
+    SQUAD_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "SQUAD_MEMBER_NOT_FOUND", "모임 멤버를 찾을 수 없습니다."),
+
+    // 지역
+    REGION_MAIN_NOT_FOUND(HttpStatus.NOT_FOUND, "REGION_MAIN_NOT_FOUND", "도/시 정보가 존재하지 않습니다."),
+    REGION_SUB_NOT_FOUND(HttpStatus.NOT_FOUND, "REGION_SUB_NOT_FOUND", "도/시 또는 시/군/구 정보가 존재하지 않습니다.");
 
     private final HttpStatus status;
     private final String code;

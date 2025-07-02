@@ -8,6 +8,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @SpringBootApplication
 public class StudyFeedApplication {
 	@Autowired
@@ -108,5 +113,24 @@ public class StudyFeedApplication {
 				regionRepository.save(region);
 			}
 		}
+
+		if(!regionRepository.existsByMainRegionAndSubRegion("전체", "전체")) {
+			Region all = new Region("전체", "전체");
+			all.setPosition(-2);
+			regionRepository.save(all);
+		}
+
+		Set<String> mainRegion = Arrays.stream(regionList)
+				.map(Region::getMainRegion)
+				.collect(Collectors.toSet());
+
+		for (String main : mainRegion) {
+			if(!regionRepository.existsByMainRegionAndSubRegion(main, "전체")) {
+				Region mainAll = new Region(main, "전체");
+				mainAll.setPosition(-1);
+				regionRepository.save(mainAll);
+			}
+		}
+
 	}
 }

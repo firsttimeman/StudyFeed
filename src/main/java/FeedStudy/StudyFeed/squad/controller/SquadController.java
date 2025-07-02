@@ -114,7 +114,7 @@ public class SquadController {
 
     @PutMapping("/{squadId}/leave")
     public ResponseEntity<?> leaveSquad(@AuthenticationPrincipal User user, @PathVariable Long squadId) {
-        squadService.kickOffParticipant(user, squadId);
+        squadService.leaveSquad(user, squadId);
         return ResponseEntity.ok().build();
     }
 

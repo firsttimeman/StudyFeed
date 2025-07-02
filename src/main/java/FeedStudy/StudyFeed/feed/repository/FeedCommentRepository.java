@@ -15,4 +15,6 @@ public interface FeedCommentRepository extends JpaRepository<FeedComment, Long> 
 
 
     Optional<FeedComment> findByParentComment_IdAndId(Long parentId, Long userId);
+
+    Optional<FeedComment> findByIdAndUser_Id(Long id, Long userId);
 }
