@@ -25,6 +25,7 @@ public class FeedCommentDto {
     private boolean isMine;
     private List<FeedCommentDto> replies;
     private boolean hasMoreReplies;
+    private boolean isDeleted;
 
     public static FeedCommentDto toDto(FeedComment comment, Long userId){
 
@@ -35,17 +36,26 @@ public class FeedCommentDto {
 
         List<FeedCommentDto> repliesShow = allReplies.size() > 2 ? allReplies.subList(0, 2) : allReplies;
 
+        boolean isDeleted = comment.isDeleted();
+        String content = isDeleted ? "작성자가 댓글을 삭제했습니다." : comment.getContent();
+        String nickName = isDeleted ? null : comment.getUser().getNickName();
+        String profileImageUrl = isDeleted ? null : comment.getUser().getImageUrl();
+
+
         return new FeedCommentDto(
                 comment.getId(),
-                comment.getUser().getNickName(),
-                comment.getUser().getImageUrl(),
-                comment.getContent(),
+                nickName,
+                profileImageUrl,
+                content,
                 comment.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
                 comment.getParentComment() != null ? comment.getParentComment().getId() : null,
                 comment.getUser().getId().equals(userId),
                 repliesShow,
-                allReplies.size() > 2);
+                allReplies.size() > 2,
+                isDeleted
+        );
+    }
 
     }
 
-}
+

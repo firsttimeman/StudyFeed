@@ -36,6 +36,8 @@ public class FeedComment extends BaseEntity {
     @OneToMany(mappedBy = "parentComment", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<FeedComment> childComments = new ArrayList<>();
 
+    private boolean deleted = false;
+
     public FeedComment(User user, Feed feed, String content, FeedComment parentComment) {
         this.user = user;
         this.feed = feed;
@@ -43,6 +45,10 @@ public class FeedComment extends BaseEntity {
         this.parentComment = parentComment;
     }
 
+    public void markAsDeleted() {
+        this.deleted = true;
+        this.content = "작성자에 의해 삭제된 댓글 입니다.";
+    }
 
 
 }

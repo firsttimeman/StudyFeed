@@ -82,6 +82,7 @@ public class FeedService {
 
         return new FeedRepliesDto(hasNext, replies);
     }
+
     @Transactional
     public void update(User user, FeedRequest request, Long feedId) {
         Feed feed = feedRepository.findById(feedId)
@@ -346,18 +347,14 @@ public class FeedService {
     }
 
     public void deleteComment(Long userId, Long commentId) {
-        FeedComment comment = feedCommentRepository.
-                findByParentComment_IdAndId(commentId, userId).
-                orElseThrow(() -> new FeedException(ErrorCode.COMMENT_NOT_FOUND));
+        FeedComment comment = feedCommentRepository.findById(commentId)
+                .orElseThrow(() -> new FeedException(ErrorCode.COMMENT_NOT_FOUND));
 
         if(!comment.getUser().getId().equals(userId)) {
             throw new FeedException(ErrorCode.NOT_COMMENT_OWNER);
         }
 
-        if(comment.getParentComment() == null) {
-            deleteChildComment(comment);
-        }
-        feedCommentRepository.delete(comment);
+       comment.markAsDeleted();
     }
 
     private void deleteChildComment(FeedComment comment) {

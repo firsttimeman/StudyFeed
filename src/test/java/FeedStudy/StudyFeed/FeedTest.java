@@ -473,7 +473,36 @@ public class FeedTest {
                 .andExpect(status().isOk());
     }
 
-   // 댓글 삭제도 봐야함
+    @Test
+    void getReplies_success_includesDeletedReplies() throws Exception {
+        String token = getToken(1);
+        User parentUser = userRepository.findByEmail("test@1test.com").orElseThrow();
+        Feed feed = createDummyFeed(parentUser, "댓글 테스트 피드", "운동");
+
+        // 1. 부모 댓글 생성
+        FeedComment parentComment = new FeedComment(parentUser, feed, "부모 댓글", null);
+        feedCommentRepository.save(parentComment);
+
+        // 2. 대댓글 2개 생성 (1개는 소프트 삭제 예정)
+        FeedComment reply1 = new FeedComment(parentUser, feed, "첫 번째 대댓글", parentComment);
+        FeedComment reply2 = new FeedComment(parentUser, feed, "두 번째 대댓글", parentComment);
+        feedCommentRepository.save(reply1);
+        feedCommentRepository.save(reply2);
+
+        // 3. 두 번째 대댓글을 soft delete 처리
+        reply2.markAsDeleted();
+
+        // 4. /api/feed/replies/{parentId} 로 요청
+        mockMvc.perform(get("/api/feed/comment/" + parentComment.getId() + "/replies")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.list.length()").value(2))
+                .andExpect(jsonPath("$.list[0].content").value("첫 번째 대댓글"))
+                .andExpect(jsonPath("$.list[1].content").value("작성자가 댓글을 삭제했습니다."));
+    }
 
 
     private void saveUploadedImagesNames() {
