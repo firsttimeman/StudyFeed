@@ -2,33 +2,27 @@ package FeedStudy.StudyFeed.user.service;
 
 import FeedStudy.StudyFeed.auth.service.AuthCodeService;
 import FeedStudy.StudyFeed.global.exception.ErrorCode;
-import FeedStudy.StudyFeed.global.exception.exceptiontype.AuthCodeException;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.MemberException;
-import FeedStudy.StudyFeed.global.exception.exceptiontype.TokenException;
 import FeedStudy.StudyFeed.global.jwt.JwtUtil;
-import FeedStudy.StudyFeed.global.type.UserRole;
+import FeedStudy.StudyFeed.global.service.S3FileService;
 import FeedStudy.StudyFeed.global.utils.NickNameUtils;
-import FeedStudy.StudyFeed.user.dto.SignUpRequestDto;
+import FeedStudy.StudyFeed.user.dto.DescriptionRequestDto;
+import FeedStudy.StudyFeed.user.dto.ProfileImageUpdateDto;
 import FeedStudy.StudyFeed.user.entity.User;
 import FeedStudy.StudyFeed.user.repository.BlackListRepository;
 import FeedStudy.StudyFeed.user.repository.RefreshRepository;
 import FeedStudy.StudyFeed.user.repository.UserRepository;
 import com.google.api.pathtemplate.ValidationException;
-import io.jsonwebtoken.Claims;
-import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.UUID;
 
 /**
  * 1. 유저 회원가입
@@ -57,6 +51,8 @@ public class UserService {
 
     @Autowired
     private AuthenticationManager authenticationManager;
+    @Autowired
+    private S3FileService s3FileService;
 
 //    public void RegisterUser(String email) throws MessagingException {
 //
@@ -217,6 +213,49 @@ public class UserService {
         user.setProviderId(providerId);
         user.setPassword(encode);
         userRepository.save(user);
+    }
+
+
+    public User modifyDescription(DescriptionRequestDto dto, User user) {
+        user.setDescription(dto.getDescription());
+        return userRepository.save(user);
+
+    }
+
+    public User changeProfileImage(User user, ProfileImageUpdateDto dto) {
+
+        if(user.getImageUrl() != null && !user.getImageUrl().isBlank()) {
+            String filename = user.getImageUrl().substring(user.getImageUrl().lastIndexOf("/") + 1);
+            s3FileService.delete(filename);
+        }
+
+        if(dto.isResetToDefault()) {
+            user.setImageUrl("avatar_placeholder.png");
+            return userRepository.save(user);
+        }
+
+        MultipartFile profileImage = dto.getProfileImage();
+        if(profileImage != null && !profileImage.isEmpty()) {
+
+            String originalFilename = profileImage.getOriginalFilename();
+
+            String uniqueName = UUID.randomUUID() + originalFilename.substring(originalFilename.lastIndexOf("."));
+            s3FileService.upload(profileImage, uniqueName);
+            String imageUrl = s3FileService.getFullUrl(uniqueName);
+            user.setImageUrl(imageUrl);
+        }
+        return userRepository.save(user);
+    }
+
+    public User toggleAllAlarm(User user, boolean enabled) {
+
+        user.setFeedAlarm(enabled);
+        user.setFeedLikeAlarm(enabled);
+        user.setSquadChatAlarm(enabled);
+        user.setChatroomAlarm(enabled);
+        user.setSquadNotifyAlarm(enabled);
+        return userRepository.save(user);
+
     }
 
     public String checkAccessToken(String data) {

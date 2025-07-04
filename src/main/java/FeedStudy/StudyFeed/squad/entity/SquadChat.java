@@ -75,6 +75,15 @@ public class SquadChat extends BaseEntity {
 
     }
 
+    public static SquadChat notice(User user, Squad squad, String message) {
+        SquadChat chat = new SquadChat();
+        chat.user = user;
+        chat.squad = squad;
+        chat.message = message;
+        chat.type = ChatType.NOTICE;
+        return chat;
+    }
+
 
     public void addImages(List<SquadChatImage> images) {
         images.forEach(image ->  {

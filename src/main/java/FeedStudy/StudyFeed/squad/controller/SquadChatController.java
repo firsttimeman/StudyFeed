@@ -1,9 +1,7 @@
 package FeedStudy.StudyFeed.squad.controller;
 
 import FeedStudy.StudyFeed.global.jwt.UserPrincipal;
-import FeedStudy.StudyFeed.squad.dto.ChatMessageResponseDto;
-import FeedStudy.StudyFeed.squad.dto.ImageMessageDto;
-import FeedStudy.StudyFeed.squad.dto.TextMessageDto;
+import FeedStudy.StudyFeed.squad.dto.*;
 import FeedStudy.StudyFeed.squad.entity.SquadChat;
 import FeedStudy.StudyFeed.squad.service.SquadChatService;
 import FeedStudy.StudyFeed.user.entity.User;
@@ -44,6 +42,24 @@ public class SquadChatController {
         SquadChat chat = squadChatService.sendImageMessage(squadId, user.getId(), dto.getImageUrls());
         simpMessagingTemplate.convertAndSend("/sub/squad/" + squadId, toResponseDto(user, chat));
     }
+
+    @MessageMapping("/squad/{squadId}/notice")
+    public void sendNotice(@DestinationVariable Long squadId,
+            NoticeRequestDto dto,
+                           Principal principal) {
+        User user = extractUserFromPrincipal(principal);
+        SquadChat noticeChat = squadChatService.postNotice(squadId, user.getId(), dto.getTargetChatId());
+        simpMessagingTemplate.convertAndSend("/sub/squad/" + squadId, toResponseDto(user, noticeChat));
+    }
+
+    @MessageMapping("/squad/{squadId}/delete")
+    public void deleteChatMessage(@DestinationVariable Long squadId,
+                                  SquadChatDeleteDto dto,
+                                  Principal principal) {
+        User user = extractUserFromPrincipal(principal);
+        squadChatService.deleteMessage(dto.getChatId(), user.getId());
+    }
+
 
     private User extractUserFromPrincipal(Principal principal) {
         if (principal instanceof UsernamePasswordAuthenticationToken token) {

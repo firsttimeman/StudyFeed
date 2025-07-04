@@ -4,6 +4,7 @@ package FeedStudy.StudyFeed.squad.service;
 import FeedStudy.StudyFeed.global.exception.ErrorCode;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.SquadException;
 import FeedStudy.StudyFeed.global.service.S3FileService;
+import FeedStudy.StudyFeed.global.type.ChatType;
 import FeedStudy.StudyFeed.squad.entity.Squad;
 import FeedStudy.StudyFeed.squad.entity.SquadChat;
 import FeedStudy.StudyFeed.squad.entity.SquadChatImage;
@@ -91,11 +92,34 @@ public class SquadChatService {
         SquadChat chat = squadChatRepository.findById(chatId)
                 .orElseThrow(() -> new SquadException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
 
-        if(!chat.getUser().getId().equals(userId)) {
+        Squad squad = chat.getSquad();
+
+        boolean isAuthor = chat.getUser().getId().equals(userId);
+        boolean isSquadOwner = squad.getUser().getId().equals(userId);
+
+        if (!isAuthor && !isSquadOwner) {
             throw new SquadException(ErrorCode.NOT_CHAT_OWNER);
         }
 
+
         chat.delete();
+    }
+
+    public SquadChat postNotice(Long squadId, Long userId, Long targetChatId) {
+        Squad squad = squadRepository.findById(squadId)
+                .orElseThrow(() -> new SquadException(ErrorCode.SQUAD_NOT_FOUND));
+
+        if (!squad.getUser().getId().equals(userId)) {
+            throw new SquadException(ErrorCode.NOT_SQUAD_OWNER);
+        }
+
+        SquadChat targetChat = squadChatRepository.findById(targetChatId)
+                .orElseThrow(() -> new SquadException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
+
+        squadChatRepository.deleteBySquadIdAndType(squadId, ChatType.NOTICE);
+
+        SquadChat notice = SquadChat.notice(targetChat.getUser(), squad, targetChat.getMessage());
+        return squadChatRepository.save(notice);
     }
 
 
@@ -117,7 +141,7 @@ public class SquadChatService {
         LocalDateTime end = today.plusDays(1).atStartOfDay().minusNanos(1);
 
 
-        if(squadChatRepository.countByTodayDateChat(squad.getId(), start, end) > 0) {
+        if(squadChatRepository.countByTodayDateChat(squad.getId(), start, end) == 0) {
             SquadChat dateChat = SquadChat.date(squad, today);
             squadChatRepository.save(dateChat);
         }

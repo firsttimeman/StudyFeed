@@ -1,5 +1,6 @@
 package FeedStudy.StudyFeed.squad.repository;
 
+import FeedStudy.StudyFeed.global.type.ChatType;
 import FeedStudy.StudyFeed.squad.entity.SquadChat;
 import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.domain.Pageable;
@@ -18,7 +19,7 @@ public interface SquadChatRepository extends JpaRepository<SquadChat, Long> {
             WHERE c.squad.id = :squadId
             AND c.type = 'DATE'
             AND c.createdAt BETWEEN :start AND :end
-            """, nativeQuery = true)
+            """, nativeQuery = false)
     long countByTodayDateChat(@Param("squadId") Long squadId,
                                   @Param("start") LocalDateTime start,
                                   @Param("end") LocalDateTime end);
@@ -34,4 +35,5 @@ public interface SquadChatRepository extends JpaRepository<SquadChat, Long> {
     @Query("SELECT c from SquadChat c WHERE c.squad.id = :squadId AND c.id < :lastId ORDER BY c.id DESC")
     List<SquadChat> findPreviousChats(@Param("squadId") Long squadId, @Param("lastId") Long lastId, Pageable pageable);
 
+    void deleteBySquadIdAndType(Long squadId, ChatType type);
 }

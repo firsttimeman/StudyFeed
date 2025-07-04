@@ -77,6 +77,9 @@ public class User extends BaseEntity {
     @Column(nullable = true)
     private String fcmToken;
 
+    @Column(nullable = true)
+    private String description;
+
 
     public void increaseReportCount() {
         this.reportCount++;
@@ -105,6 +108,7 @@ public class User extends BaseEntity {
         this.gender = req.getGender();
         this.userRole = UserRole.USER;
         this.receiveEvent = req.getReceiveEvent().equals("Y");
+        this.description = "";
     }
 
     public List<SimpleGrantedAuthority> getAuthorities() {

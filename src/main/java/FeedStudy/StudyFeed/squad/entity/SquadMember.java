@@ -31,9 +31,13 @@ public class SquadMember extends BaseEntity {
     @Column(nullable = false)
     private AttendanceStatus attendanceStatus;
 
+    @Column(nullable = false)
+    private boolean isOwner;
+
     private SquadMember(User user, Squad squad) {
         this.user = user;
         this.squad = squad;
+        this.isOwner = squad.getUser().getId().equals(user.getId());
         this.attendanceStatus = squad.getUser().getId() == user.getId() ||
                 squad.getJoinType().equals(JoinType.DIRECT) ? AttendanceStatus.JOINED : AttendanceStatus.PENDING;
     }

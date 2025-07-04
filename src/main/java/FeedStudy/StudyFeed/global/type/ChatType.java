@@ -1,5 +1,5 @@
 package FeedStudy.StudyFeed.global.type;
 
 public enum ChatType {
-    IMAGE, TEXT, SYSTEM, DATE
+    IMAGE, TEXT, NOTICE, DATE
 }

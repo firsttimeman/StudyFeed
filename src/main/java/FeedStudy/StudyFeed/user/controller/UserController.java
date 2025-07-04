@@ -1,5 +1,7 @@
 package FeedStudy.StudyFeed.user.controller;
 
+import FeedStudy.StudyFeed.user.dto.DescriptionRequestDto;
+import FeedStudy.StudyFeed.user.dto.ProfileImageUpdateDto;
 import FeedStudy.StudyFeed.user.dto.SignUpRequestDto;
 import FeedStudy.StudyFeed.user.entity.User;
 import FeedStudy.StudyFeed.user.service.UserService;
@@ -9,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -70,12 +73,14 @@ public class UserController {
      * 닉네임 null 일시 새로 만들기
      */
     @GetMapping("/generate_nickname")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<String> makeNickName() {
         userService.makeNickName();
         return ResponseEntity.ok("NickName 생성 완료");
     }
 
     @PutMapping("/update_nickname")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<String> updateNickName(@AuthenticationPrincipal User user, @RequestParam String nickname) {
         userService.updateNickname(user, nickname);
         return ResponseEntity.ok("NickName 적용 완료");
@@ -90,6 +95,7 @@ public class UserController {
 
 
     @GetMapping("/has_nickname")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<Boolean> hasNickName(@AuthenticationPrincipal User user) {
         return ResponseEntity.ok(userService.hasNickName(user));
     }
@@ -98,6 +104,7 @@ public class UserController {
      * 유저 fcmtoken 재발행 만들기
      */
     @PutMapping("/update_fcm")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<String> refreshFcmToken(@RequestParam("token") String fcmToken,
                                                   @AuthenticationPrincipal User user) {
 
@@ -106,7 +113,9 @@ public class UserController {
         return ResponseEntity.ok("FCM 토큰이 재발급 되었습니다.");
     }
 
+    // 이게 실질적으로 쓰일지는 모르겠음
     @PutMapping("/modity_password") // 사실 유저 설정창에서의 프로필 변경 느낌
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> changeProfile(@RequestParam String email, @RequestParam String providerType,
                                            @RequestParam String password, @RequestParam String providerId) {
         userService.changeProfile(email, providerType, password, providerId);
@@ -114,11 +123,35 @@ public class UserController {
     }
 
     @PostMapping("/check")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> checkAccessToken(@AuthenticationPrincipal User user, @RequestParam String data) {
         String check = userService.checkAccessToken(data);
         return ResponseEntity.ok().body(check);
     }
 
 
+    @PutMapping("/modify_description")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<?> modifyDescription(@AuthenticationPrincipal User user,
+                                               @RequestBody DescriptionRequestDto dto) {
+
+        User user1 = userService.modifyDescription(dto, user);
+        return ResponseEntity.ok().body(user1);
+    }
+
+    @PostMapping("/profile-image")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<?> updateProfileImage(@AuthenticationPrincipal User user,
+                                                @ModelAttribute ProfileImageUpdateDto dto) {
+        User updated = userService.changeProfileImage(user, dto);
+        return ResponseEntity.ok(Map.of("profileImageUrl", updated.getImageUrl()));
+    }
+
+    @PostMapping("/alarm-settings/toggle")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<?> toggleAlarm(@AuthenticationPrincipal User user,
+                                         @RequestParam boolean enabled) {
+        return ResponseEntity.ok(userService.toggleAllAlarm(user, enabled));
+    }
 
 }
