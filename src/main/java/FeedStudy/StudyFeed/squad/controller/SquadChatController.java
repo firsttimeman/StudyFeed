@@ -57,7 +57,9 @@ public class SquadChatController {
                                   SquadChatDeleteDto dto,
                                   Principal principal) {
         User user = extractUserFromPrincipal(principal);
-        squadChatService.deleteMessage(dto.getChatId(), user.getId());
+        SquadChat squadChat = squadChatService.deleteMessage(dto.getChatId(), user.getId());
+        simpMessagingTemplate.convertAndSend("/sub/squad/" + squadId, toResponseDto(user, squadChat));
+        //todo 물어보기
     }
 
 
@@ -83,6 +85,7 @@ public class SquadChatController {
                 .imageUrls(imageUrls)
                 .type(chat.getType())
                 .isMine(user.getId().equals(chat.getUser().getId()))
+                .deletable("삭제된 메세지 입니다.".equals(chat.getMessage()))
                 .build();
     }
 

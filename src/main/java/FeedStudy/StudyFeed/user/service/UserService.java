@@ -258,6 +258,19 @@ public class UserService {
 
     }
 
+    @Transactional
+    public void deleteUser(User user) {
+        if(!userRepository.existsById(user.getId())) {
+            throw new MemberException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        refreshRepository.deleteRefreshToken(user.getEmail());
+
+        userRepository.delete(user);
+        //todo 탈퇴설정 천천히 다시 생각
+    }
+
+
     public String checkAccessToken(String data) {
 
         return data + "okay token";

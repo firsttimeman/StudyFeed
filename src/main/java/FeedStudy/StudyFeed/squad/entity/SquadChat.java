@@ -29,36 +29,54 @@ public class SquadChat extends BaseEntity {
     @Column(columnDefinition = "text")
     private String message;
 
-    private ChatType type = ChatType.TEXT;
+    @Enumerated(EnumType.STRING)
+    private ChatType type;
 
-    private int imageCount = 0;
-
+    private boolean deletable;
 
     @OneToMany(mappedBy = "squadChat", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SquadChatImage> images = new ArrayList<>();
 
-    private boolean deletable = true;
 
-
-    public SquadChat(User user, Squad squad, ChatType type, String message, boolean deletable) {
-        this.user = user;
-        this.squad = squad;
-        this.type = type;
-        this.message = message;
-        this.deletable = deletable;
-    }
 
     public static SquadChat text(User user, Squad squad, String message) {
-        return new SquadChat(user, squad, ChatType.TEXT, message, true);
+        return SquadChat.builder()
+                .user(user)
+                .squad(squad)
+                .message(message)
+                .type(ChatType.TEXT)
+                .deletable(true)
+                .build();
     }
 
     public static SquadChat image(User user, Squad squad, List<SquadChatImage> images) {
-        SquadChat squadChat = new SquadChat(user, squad, ChatType.IMAGE, "", true);
-        squadChat.setImageCount(images.size());
+        SquadChat squadChat = SquadChat.builder()
+                .user(user)
+                .squad(squad)
+                .message("") // 이미지 전용 메시지는 비워둠
+                .type(ChatType.IMAGE)
+                .deletable(true)
+                .build();
         squadChat.addImages(images);
         return squadChat;
     }
 
+    public static SquadChat notice(User user, Squad squad, String message) {
+        return SquadChat.builder()
+                .user(user)
+                .squad(squad)
+                .message(message)
+                .type(ChatType.NOTICE)
+                .deletable(false)
+                .build();
+    }
+
+    public void addImages(List<SquadChatImage> imageList) {
+        for (SquadChatImage image : imageList) {
+            image.initSquadChat(this);
+            this.images.add(image);
+        }
+    }
 
 
     public static SquadChat date(Squad squad, LocalDate date) {
@@ -75,22 +93,7 @@ public class SquadChat extends BaseEntity {
 
     }
 
-    public static SquadChat notice(User user, Squad squad, String message) {
-        SquadChat chat = new SquadChat();
-        chat.user = user;
-        chat.squad = squad;
-        chat.message = message;
-        chat.type = ChatType.NOTICE;
-        return chat;
-    }
 
-
-    public void addImages(List<SquadChatImage> images) {
-        images.forEach(image ->  {
-            this.images.add(image);
-            image.initSquadChat(this);
-        });
-    }
 
     public void delete(){
         this.message = "삭제된 메세지 입니다.";

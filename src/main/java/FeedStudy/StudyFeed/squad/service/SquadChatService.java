@@ -32,63 +32,60 @@ public class SquadChatService {
     private final S3FileService s3FileService;
 
     public SquadChat sendTextMessage(Long squadId, Long userId, String message) {
-        Squad squad = squadRepository.findById(squadId)
-                .orElseThrow(() -> new SquadException(ErrorCode.SQUAD_NOT_FOUND));
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new SquadException(ErrorCode.USER_NOT_FOUND));
+        Squad squad = getSquad(squadId);
+        User user = getUser(userId);
 
-        insertDateMessageIfNeeded(squad);
+        insertDateMessageIfNeededSquad(squad);
 
         SquadChat squadChat = SquadChat.text(user, squad, message);
         return squadChatRepository.save(squadChat);
     }
 
-    public List<String> uploadImagesAndReturnUrls(Long squadId, Long userId, List<MultipartFile> images) {
-
-        if(images.size() > 10) {
-            throw new SquadException(ErrorCode.IMAGE_UPLOAD_LIMIT_EXCEEDED);
-        }
-
-
-        Squad squad = squadRepository.findById(squadId)
-                .orElseThrow(() -> new SquadException(ErrorCode.SQUAD_NOT_FOUND));
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new SquadException(ErrorCode.USER_NOT_FOUND));
-
-        insertDateMessageIfNeeded(squad);
-
-        List<SquadChatImage> uploaded = images.stream().map(file -> {
-            String ext = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
-            String fileName = UUID.randomUUID().toString().replace("-", "") + ext;
-            String fullUrl = s3FileService.uploadAndReturnUrl(file, fileName);
-            return new SquadChatImage(fileName, fullUrl);
-        }).toList();
-
-        SquadChat chat = SquadChat.image(user, squad, uploaded);
-        squadChatRepository.save(chat);
-
-        return uploaded.stream().map(SquadChatImage::getUrl).toList();
-    }
 
     public SquadChat sendImageMessage(Long squadId, Long userId, List<String> imageUrls) {
-        Squad squad = squadRepository.findById(squadId)
-                .orElseThrow(() -> new SquadException(ErrorCode.SQUAD_NOT_FOUND));
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new SquadException(ErrorCode.USER_NOT_FOUND));
+        Squad squad = getSquad(squadId);
+        User user = getUser(userId);
 
-        insertDateMessageIfNeeded(squad);
+        insertDateMessageIfNeededSquad(squad);
 
         List<SquadChatImage> images = imageUrls.stream()
-                .map(url -> new SquadChatImage(null, url))
-                .toList();
+                .map(url -> new SquadChatImage(null, null, url))
+                .toList(); // todo openchat이랑 비교가 필요함
 
         SquadChat chat = SquadChat.image(user, squad, images);
         return squadChatRepository.save(chat);
     }
 
+    public List<String> uploadImagesAndReturnUrls(Long squadId, Long userId, List<MultipartFile> images) {
+
+        if (images.size() > 10) {
+            throw new SquadException(ErrorCode.IMAGE_UPLOAD_LIMIT_EXCEEDED);
+        }
 
 
-    public void deleteMessage(Long chatId, Long userId) {
+        Squad squad = getSquad(squadId);
+        User user = getUser(userId);
+
+
+        List<SquadChatImage> uploaded = images.stream().map(file -> {
+            String ext = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
+            String fileName = UUID.randomUUID().toString().replace("-", "") + ext;
+            String originalFilename = file.getOriginalFilename();
+            String fullUrl = s3FileService.uploadAndReturnUrl(file, fileName);
+            return new SquadChatImage(fileName, originalFilename, fullUrl);
+        }).toList();
+
+        SquadChat chat = SquadChat.image(user, squad, uploaded);
+        uploaded.forEach(image -> image.initSquadChat(chat));
+        squadChatRepository.save(chat);
+
+        return uploaded.stream().map(SquadChatImage::getUrl).toList();
+    }
+
+
+
+
+    public SquadChat deleteMessage(Long chatId, Long userId) {
         SquadChat chat = squadChatRepository.findById(chatId)
                 .orElseThrow(() -> new SquadException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
 
@@ -103,11 +100,11 @@ public class SquadChatService {
 
 
         chat.delete();
+        return squadChatRepository.save(chat);
     }
 
     public SquadChat postNotice(Long squadId, Long userId, Long targetChatId) {
-        Squad squad = squadRepository.findById(squadId)
-                .orElseThrow(() -> new SquadException(ErrorCode.SQUAD_NOT_FOUND));
+        Squad squad = getSquad(squadId);
 
         if (!squad.getUser().getId().equals(userId)) {
             throw new SquadException(ErrorCode.NOT_SQUAD_OWNER);
@@ -133,7 +130,7 @@ public class SquadChatService {
         return squadChatRepository.findPreviousChats(squadId, lastId, PageRequest.of(0, 20));
     }
 
-    private void insertDateMessageIfNeeded(Squad squad) {
+    private void insertDateMessageIfNeededSquad(Squad squad) {
 
         LocalDate today = LocalDate.now();
 
@@ -146,5 +143,15 @@ public class SquadChatService {
             squadChatRepository.save(dateChat);
         }
 
+    }
+
+    private User getUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new SquadException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private Squad getSquad(Long squadId) {
+        return squadRepository.findById(squadId)
+                .orElseThrow(() -> new SquadException(ErrorCode.SQUAD_NOT_FOUND));
     }
 }

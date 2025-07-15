@@ -25,18 +25,19 @@ public class SquadChatImage extends BaseEntity {
     @JoinColumn(name = "squadchat_id")
     private SquadChat squadChat;
 
-    public SquadChatImage(String filename, String url) {
-        this.uniqueName = filename;
+    public SquadChatImage(String uniqueName, String originName, String url) {
+        this.uniqueName = uniqueName;
+        this.originName = originName;
         this.url = url;
     }
 
-
-
     public void initSquadChat(SquadChat squadChat) {
-        if(this.squadChat == null) {
+        if (this.squadChat == null) {
             this.squadChat = squadChat;
         }
     }
+
+
 
 
 }

@@ -1,4 +1,4 @@
-package FeedStudy.StudyFeed.squad.dto;
+package FeedStudy.StudyFeed.openchat.dto;
 
 import FeedStudy.StudyFeed.global.type.ChatType;
 import lombok.Builder;
@@ -6,15 +6,14 @@ import lombok.Data;
 
 import java.util.List;
 
-@Data
 @Builder
+@Data
 public class ChatMessageResponseDto {
-    private Long squadId;
+    private Long roomId;
     private Long senderId;
-    private String message;
-    private List<String> imageUrls;
+    private String content;
     private ChatType type;
+    private List<String> imageUrls;
     private boolean isMine;
-    private boolean deletable;
-
+    private boolean deleted;
 }

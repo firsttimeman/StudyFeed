@@ -29,7 +29,7 @@ public class ChatTokenProvider {
                 .setExpiration(expiryDate)
                 .signWith(SignatureAlgorithm.HS256, secretKey.getBytes())
                 .compact();
-    }
+    } // todo validate 재구현및 생각해보기...
 
 
     public Claims validateChatToken(String token) {

@@ -154,4 +154,11 @@ public class UserController {
         return ResponseEntity.ok(userService.toggleAllAlarm(user, enabled));
     }
 
+    @DeleteMapping("/me")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<?> deleteUser(@AuthenticationPrincipal User user) {
+        userService.deleteUser(user);
+        return ResponseEntity.ok().build();
+    }
+
 }

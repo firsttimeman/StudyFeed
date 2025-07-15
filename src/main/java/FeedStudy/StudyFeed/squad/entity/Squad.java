@@ -44,6 +44,7 @@ public class Squad extends BaseEntity {
 
     private LocalTime time;
 
+    private String notice = null; // todo check notice
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
