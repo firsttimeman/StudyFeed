@@ -8,4 +8,5 @@ import lombok.Getter;
 public class ChatRoomCreateResponseDto {
     private Long roomId;
     private String title;
+    private String chatToken;
 }

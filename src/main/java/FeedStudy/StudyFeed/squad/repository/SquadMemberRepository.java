@@ -21,4 +21,6 @@ public interface SquadMemberRepository extends JpaRepository<SquadMember, Long> 
     boolean existsBySquadAndUserAndAttendanceStatus(Squad squad, User user, AttendanceStatus attendanceStatus);
 
     List<SquadMember> findAllBySquad(Squad squad);
+
+    List<SquadMember> findByUser(User user);
 }

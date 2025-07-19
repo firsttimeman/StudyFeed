@@ -14,7 +14,7 @@ import java.util.List;
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 
-    void deleteByChatRoomIdAndType(Long roomId, ChatType chatType);
+    void deleteByChatRoomIdAndNoticeIsNotNull(Long roomId);
 
 
     @Query("SELECT m FROM ChatMessage m WHERE m.chatRoom.id = :roomId ORDER BY m.id DESC")

@@ -34,6 +34,8 @@ public class ChatMessage extends BaseEntity {
 
     private boolean deletable = true;
 
+    private String notice = null;
+
     @OneToMany(mappedBy = "chatMessage", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChatImage> images = new ArrayList<>();
 
@@ -46,12 +48,11 @@ public class ChatMessage extends BaseEntity {
                 .build();
     }
 
-    public static ChatMessage notice(User sender, ChatRoom room, String content) {
+    public static ChatMessage notice(User sender, ChatRoom room, String notice) {
         return ChatMessage.builder()
                 .chatRoom(room)
                 .sender(sender)
-                .content(content)
-                .type(ChatType.NOTICE)
+                .content(notice)
                 .deletable(false)
                 .build();
     }

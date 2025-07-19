@@ -59,7 +59,6 @@ public class SquadChatController {
         User user = extractUserFromPrincipal(principal);
         SquadChat squadChat = squadChatService.deleteMessage(dto.getChatId(), user.getId());
         simpMessagingTemplate.convertAndSend("/sub/squad/" + squadId, toResponseDto(user, squadChat));
-        //todo 물어보기
     }
 
 

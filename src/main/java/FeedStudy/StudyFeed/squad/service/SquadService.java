@@ -50,7 +50,7 @@
 
 
         @Transactional
-        public Squad createSquad(SquadRequest req, User user) {
+        public Map<String, String> createSquadWithToken(SquadRequest req, User user) {
 
             regionService.checkRegion(req.getRegionMain(), req.getRegionSub());
 
@@ -60,12 +60,19 @@
 
 
             Squad squad = Squad.create(user ,req);
-
             squad = squadRepository.save(squad);
 
             SquadMember squadMember = SquadMember.create(user, squad);
             squadMemberRepository.save(squadMember);
-            return squad;
+
+            String chatToken = chatTokenProvider.createSquadChatToken(user, squad);
+
+
+            return Map.of(
+                    "status", "created",
+                    "squadId", squad.getId().toString(),
+                    "chatToken", chatToken
+            );
         }
 
         @Transactional
@@ -120,7 +127,7 @@
                 SquadMember squadMember = members.get();
 
                 return switch (squadMember.getAttendanceStatus()) {
-                    case JOINED -> Map.of("status", "joined", "chatToken", chatTokenProvider.createChatToken(user, squad));
+                    case JOINED -> Map.of("status", "joined", "chatToken", chatTokenProvider.createSquadChatToken(user, squad));
                     case PENDING -> Map.of("status", "pending");
                     case REJECTED -> throw new SquadException(ErrorCode.SQUAD_REJECTED);
                     case KICKED_OUT -> throw new SquadException(ErrorCode.SQUAD_KICKED_OUT);
@@ -134,7 +141,6 @@
         }
 
         public DataResponse homeSquad(User user, Pageable pageable, SquadFilterRequest req) {
-            // todo 이건 안해도 되는거 아닌가????? 검증이 repo에서 하고 있는데???
             List<User> excludedUser = new ArrayList<>();
             if (user != null) {
                 excludedUser = getExcludedUsers(user);
@@ -270,7 +276,19 @@
         }
 
 
+        public Map<String, String> refreshSquadChatToken(Long squadId, User user) {
+            Squad squad = findSquad(squadId);
 
+            boolean isMember = squad.getMembers().stream()
+                    .anyMatch(member -> member.getUser().getId().equals(user.getId()));
+
+            if(!isMember) {
+                throw new SquadException(ErrorCode.SQUAD_MEMBER_NOT_FOUND);
+            }
+
+            String squadChatToken = chatTokenProvider.createSquadChatToken(user, squad);
+            return Map.of("chatToken", squadChatToken);
+        }
 
 
 

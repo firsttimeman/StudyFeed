@@ -29,6 +29,8 @@ public class SquadChat extends BaseEntity {
     @Column(columnDefinition = "text")
     private String message;
 
+    private String notice = null;
+
     @Enumerated(EnumType.STRING)
     private ChatType type;
 
@@ -36,6 +38,7 @@ public class SquadChat extends BaseEntity {
 
     @OneToMany(mappedBy = "squadChat", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SquadChatImage> images = new ArrayList<>();
+
 
 
 
@@ -61,12 +64,11 @@ public class SquadChat extends BaseEntity {
         return squadChat;
     }
 
-    public static SquadChat notice(User user, Squad squad, String message) {
+    public static SquadChat notice(User user, Squad squad, String noticeMessage) {
         return SquadChat.builder()
                 .user(user)
                 .squad(squad)
-                .message(message)
-                .type(ChatType.NOTICE)
+                .notice(noticeMessage)
                 .deletable(false)
                 .build();
     }

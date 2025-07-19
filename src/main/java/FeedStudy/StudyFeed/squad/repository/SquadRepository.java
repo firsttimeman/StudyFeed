@@ -15,6 +15,7 @@ import java.util.Optional;
 public interface SquadRepository extends JpaRepository<Squad, Long> {
 
     Page<Squad> findByUser(User user, Pageable pageable);
+    List<Squad> findByUser(User user);
 
     @Query("""
                 SELECT s FROM Squad s

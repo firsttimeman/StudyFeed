@@ -220,7 +220,7 @@ public class FeedService {
     }
 
     public boolean hasFeedLike(User user, Feed feed) {
-      return feedLikeRepository.existsByUserAndFeed(user, feed); // todo 이거 사용자가 이 피드에 대해서 좋아요 버튼을 눌렀는가 아닌가를 확인하는 기능 구현
+      return feedLikeRepository.existsByUserAndFeed(user, feed);
     }
 
     private void validateOwner(User user, Feed feed) {

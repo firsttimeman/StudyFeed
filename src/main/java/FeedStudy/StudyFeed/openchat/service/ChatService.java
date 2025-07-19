@@ -3,7 +3,6 @@ package FeedStudy.StudyFeed.openchat.service;
 import FeedStudy.StudyFeed.global.exception.ErrorCode;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.MemberException;
 import FeedStudy.StudyFeed.global.service.S3FileService;
-import FeedStudy.StudyFeed.global.type.ChatType;
 import FeedStudy.StudyFeed.openchat.dto.ChatRoomCreateRequestDto;
 import FeedStudy.StudyFeed.openchat.dto.ChatRoomCreateResponseDto;
 import FeedStudy.StudyFeed.openchat.entity.ChatImage;
@@ -14,6 +13,7 @@ import FeedStudy.StudyFeed.openchat.repository.ChatImageRepository;
 import FeedStudy.StudyFeed.openchat.repository.ChatMessageRepository;
 import FeedStudy.StudyFeed.openchat.repository.ChatRoomRepository;
 import FeedStudy.StudyFeed.openchat.repository.ChatRoomUserRepository;
+import FeedStudy.StudyFeed.squad.util.ChatTokenProvider;
 import FeedStudy.StudyFeed.user.entity.User;
 import FeedStudy.StudyFeed.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -25,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -38,6 +39,7 @@ public class ChatService {
     private final S3FileService s3FileService;
     private final ChatImageRepository chatImageRepository;
     private final ChatRoomUserRepository chatRoomUserRepository;
+    private final ChatTokenProvider chatTokenProvider;
 
     public ChatRoomCreateResponseDto createChatRoom(Long userId, ChatRoomCreateRequestDto dto) {
 
@@ -49,22 +51,37 @@ public class ChatService {
         chatRoomRepository.save(chatRoom);
         chatRoomUserRepository.save(chatRoomUser);
 
-        return new ChatRoomCreateResponseDto(chatRoom.getId(), chatRoom.getTitle());
+        String openChatToken = chatTokenProvider.createOpenChatToken(user, chatRoom);
+
+
+        return new ChatRoomCreateResponseDto(chatRoom.getId(), chatRoom.getTitle(), openChatToken);
     }
 
     @Transactional
-    public void joinChatRoom(Long roomId, Long userId) {
+    public Map<String, String> joinChatRoomWithToken(Long roomId, Long userId) {
         ChatRoom room = getChatRoom(roomId);
         User user = getUser(userId);
 
         // 이미 참여 중인지 확인
         if (chatRoomUserRepository.existsByChatRoomAndUser(room, user)) {
-            throw new IllegalStateException("이미 참여 중인 채팅방입니다.");
+            String openChatToken = chatTokenProvider.createOpenChatToken(user, room);
+            return Map.of(
+                    "status", "already joined",
+                    "chatToken", openChatToken
+            );
         }
 
         room.incrementParticipantCount();
         ChatRoomUser cru = ChatRoomUser.create(room, user, false);
         chatRoomUserRepository.save(cru);
+
+        String openChatToken = chatTokenProvider.createOpenChatToken(user, room);
+
+
+        return Map.of(
+                "status", "joined",
+                "chatToken", openChatToken
+        );
     }
 
 
@@ -82,6 +99,20 @@ public class ChatService {
 
         chatRoomUserRepository.delete(cru);
         room.decrementParticipantCount();
+    }
+
+    public Map<String, String> refreshChatToken(Long roomId, User user) {
+
+        ChatRoom chatRoom = getChatRoom(roomId);
+
+        boolean isParticipant = chatRoomUserRepository.existsByChatRoomAndUser(chatRoom, user);
+        if(!isParticipant) {
+            throw new IllegalArgumentException("해당 채팅방에 참여하고 있지 않다");
+        }
+
+        String openChatToken = chatTokenProvider.createOpenChatToken(user, chatRoom);
+        return Map.of("chatToken", openChatToken);
+
     }
 
 
@@ -145,7 +176,7 @@ public class ChatService {
         ChatMessage target = chatMessageRepository.findById(targetMessageId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 메세지를 찾을수가 없습니다."));
 
-        chatMessageRepository.deleteByChatRoomIdAndType(roomId, ChatType.NOTICE);
+        chatMessageRepository.deleteByChatRoomIdAndNoticeIsNotNull(roomId);
 
         ChatMessage notice = ChatMessage.notice(target.getSender(), room, target.getContent());
         return chatMessageRepository.save(notice);

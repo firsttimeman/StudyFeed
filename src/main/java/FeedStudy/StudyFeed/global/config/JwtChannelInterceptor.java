@@ -1,6 +1,7 @@
 package FeedStudy.StudyFeed.global.config;
 
 import FeedStudy.StudyFeed.global.jwt.JwtUtil;
+import FeedStudy.StudyFeed.squad.util.ChatTokenProvider;
 import FeedStudy.StudyFeed.user.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtChannelInterceptor implements ChannelInterceptor {
 
-    private final JwtUtil jwtUtil;
+    private final ChatTokenProvider chatTokenProvider;
     private final UserRepository userRepository;
 
     @Override
@@ -25,16 +26,15 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
         if(StompCommand.CONNECT.equals(accessor.getCommand())) {
-            String token = accessor.getFirstNativeHeader("Authorization");
+            String token = accessor.getFirstNativeHeader("chat-token");
 
-            if(token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
+            if(token != null) {
 
                try {
-                   Claims claims = jwtUtil.getClaimsFromToken(token);
-                   String email = claims.getSubject();
+                   Claims claims = chatTokenProvider.validateChatToken(token);
+                   Long userId = Long.parseLong(claims.getSubject());
 
-                   userRepository.findByEmail(email).ifPresent(user -> {
+                   userRepository.findById(userId).ifPresent(user -> {
 
                        UsernamePasswordAuthenticationToken authenticationToken =
                                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
@@ -48,5 +48,5 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
             }
         }
         return message;
-    }
+    } // todo openchat도 가능하게 만들기
 }

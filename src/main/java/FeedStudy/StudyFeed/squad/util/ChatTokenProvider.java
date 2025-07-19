@@ -1,5 +1,7 @@
 package FeedStudy.StudyFeed.squad.util;
 
+import FeedStudy.StudyFeed.openchat.entity.ChatRoom;
+import FeedStudy.StudyFeed.openchat.repository.ChatRoomRepository;
 import FeedStudy.StudyFeed.squad.entity.Squad;
 import FeedStudy.StudyFeed.user.entity.User;
 import io.jsonwebtoken.Claims;
@@ -17,20 +19,34 @@ public class ChatTokenProvider {
     @Value("${chatjwt.secretKey}")
     private String secretKey;
 
-    public String createChatToken(User user, Squad squad) {
+
+
+    public String createSquadChatToken(User user, Squad squad) {
 
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + 5 * 60 * 1000);
 
         return Jwts.builder()
                 .setSubject(user.getId().toString())
-                .claim("sqaudId", squad.getId())
-                .setIssuedAt(now)
+                .claim("squadId", squad.getId())
                 .setExpiration(expiryDate)
                 .signWith(SignatureAlgorithm.HS256, secretKey.getBytes())
                 .compact();
-    } // todo validate 재구현및 생각해보기...
+    }
 
+
+    public String createOpenChatToken(User user, ChatRoom chatRoom) {
+
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + 5 * 60 * 1000);
+
+        return Jwts.builder()
+                .setSubject(user.getId().toString())
+                .claim("chatRoomId", chatRoom.getId())
+                .setExpiration(expiryDate)
+                .signWith(SignatureAlgorithm.HS256, secretKey.getBytes())
+                .compact();
+    }
 
     public Claims validateChatToken(String token) {
         try {

@@ -10,4 +10,6 @@ public interface FeedImageRepository  extends JpaRepository<FeedImage, Long> {
     void deleteByImageUrl(String imageUrl);
 
     List<FeedImage> findByFeed(Feed feed);
+
+    void deleteAllByFeed(Feed feed);
 }

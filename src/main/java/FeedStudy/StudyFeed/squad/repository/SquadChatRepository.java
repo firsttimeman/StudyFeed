@@ -1,7 +1,9 @@
 package FeedStudy.StudyFeed.squad.repository;
 
 import FeedStudy.StudyFeed.global.type.ChatType;
+import FeedStudy.StudyFeed.squad.entity.Squad;
 import FeedStudy.StudyFeed.squad.entity.SquadChat;
+import FeedStudy.StudyFeed.user.entity.User;
 import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -35,5 +37,9 @@ public interface SquadChatRepository extends JpaRepository<SquadChat, Long> {
     @Query("SELECT c from SquadChat c WHERE c.squad.id = :squadId AND c.id < :lastId ORDER BY c.id DESC")
     List<SquadChat> findPreviousChats(@Param("squadId") Long squadId, @Param("lastId") Long lastId, Pageable pageable);
 
-    void deleteBySquadIdAndType(Long squadId, ChatType type);
+    void deleteBySquadIdAndNoticeIsNotNull(Long squadId);
+
+    List<SquadChat> findBySquadAndUser(Squad squad, User user);
+
+    List<SquadChat> findBySquad(Squad squad);
 }

@@ -1,11 +1,23 @@
 package FeedStudy.StudyFeed.user.service;
 
 import FeedStudy.StudyFeed.auth.service.AuthCodeService;
+import FeedStudy.StudyFeed.feed.entity.Feed;
+import FeedStudy.StudyFeed.feed.entity.FeedComment;
+import FeedStudy.StudyFeed.feed.repository.FeedCommentRepository;
+import FeedStudy.StudyFeed.feed.repository.FeedImageRepository;
+import FeedStudy.StudyFeed.feed.repository.FeedLikeRepository;
+import FeedStudy.StudyFeed.feed.repository.FeedRepository;
 import FeedStudy.StudyFeed.global.exception.ErrorCode;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.MemberException;
 import FeedStudy.StudyFeed.global.jwt.JwtUtil;
 import FeedStudy.StudyFeed.global.service.S3FileService;
 import FeedStudy.StudyFeed.global.utils.NickNameUtils;
+import FeedStudy.StudyFeed.squad.entity.Squad;
+import FeedStudy.StudyFeed.squad.entity.SquadChat;
+import FeedStudy.StudyFeed.squad.entity.SquadMember;
+import FeedStudy.StudyFeed.squad.repository.SquadChatRepository;
+import FeedStudy.StudyFeed.squad.repository.SquadMemberRepository;
+import FeedStudy.StudyFeed.squad.repository.SquadRepository;
 import FeedStudy.StudyFeed.user.dto.DescriptionRequestDto;
 import FeedStudy.StudyFeed.user.dto.ProfileImageUpdateDto;
 import FeedStudy.StudyFeed.user.entity.User;
@@ -17,11 +29,13 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -53,6 +67,19 @@ public class UserService {
     private AuthenticationManager authenticationManager;
     @Autowired
     private S3FileService s3FileService;
+    @Autowired
+    private SquadChatRepository squadChatRepository;
+    @Autowired
+    private FeedRepository feedRepository;
+    @Autowired
+    private FeedImageRepository feedImageRepository;
+    @Autowired
+    private FeedLikeRepository feedLikeRepository;
+    @Autowired
+    private FeedCommentRepository feedCommentRepository;
+    @Autowired
+    private SquadMemberRepository squadMemberRepository;
+    private SquadRepository squadRepository;
 
 //    public void RegisterUser(String email) throws MessagingException {
 //
@@ -87,8 +114,7 @@ public class UserService {
 //                .telecom(signUpRequestDto.getTelecom())
 //                .gender(signUpRequestDto.getGender())
 ////                .nickName(signUpRequestDto.getNickName())
-//                .birthDate(signUpRequestDto.getBirthDate()) // feed 알람도 추가해야 하는지 Todo
-//                .build();
+//                .birthDate(signUpRequestDto.getBirthDate()) //
 //
 //
 //        userRepository.save(newUser);
@@ -262,6 +288,41 @@ public class UserService {
     public void deleteUser(User user) {
         if(!userRepository.existsById(user.getId())) {
             throw new MemberException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        List<Feed> userFeeds = feedRepository.findByUser(user);
+        for (Feed feed : userFeeds) {
+            feedImageRepository.deleteAllByFeed(feed);
+            feedLikeRepository.deleteAllByFeed(feed);
+            feedRepository.delete(feed);
+        }
+
+
+        List<FeedComment> comments = feedCommentRepository.findByUser(user);
+        for (FeedComment comment : comments) {
+            comment.setUser(null);
+        }
+
+        List<Squad> createdSquads = squadRepository.findByUser(user);
+        for (Squad squad : createdSquads) {
+            List<SquadChat> squadChat = squadChatRepository.findBySquad(squad);
+            squadChatRepository.deleteAll(squadChat);
+
+            List<SquadMember> members = squadMemberRepository.findAllBySquad(squad);
+            squadMemberRepository.deleteAll(members);
+
+            squadRepository.delete(squad);
+        }
+
+        List<SquadMember> joinedSquads = squadMemberRepository.findByUser(user);
+        for (SquadMember member : joinedSquads) {
+            Squad squad = member.getSquad();
+
+            List<SquadChat> chats = squadChatRepository.findBySquadAndUser(squad, user);
+            for (SquadChat chat : chats) {
+                chat.setUser(null);
+            }
+            squadMemberRepository.delete(member);
         }
 
         refreshRepository.deleteRefreshToken(user.getEmail());

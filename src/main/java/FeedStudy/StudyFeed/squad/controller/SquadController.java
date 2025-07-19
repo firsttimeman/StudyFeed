@@ -35,8 +35,8 @@ public class SquadController {
     public ResponseEntity<?> createSquad(@AuthenticationPrincipal User user,
                                               @Valid @RequestBody SquadRequest requestDto) {
         System.out.println(requestDto);
-        Squad squad = squadService.createSquad(requestDto, user);
-        return ResponseEntity.ok(SquadDto.from(squad));
+        Map<String, String> squadWithToken = squadService.createSquadWithToken(requestDto, user);
+        return ResponseEntity.ok(squadWithToken);
     }
 
 
@@ -125,6 +125,12 @@ public class SquadController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/{squadId}/refreshchattoken")
+    public ResponseEntity<?> refreshChatToken(@AuthenticationPrincipal User user,
+                                              @PathVariable Long squadId) {
+        Map<String, String> token = squadService.refreshSquadChatToken(squadId, user);
+        return ResponseEntity.ok(token);
+    }
 
 
 

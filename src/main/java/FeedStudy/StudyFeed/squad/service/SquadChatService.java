@@ -50,7 +50,7 @@ public class SquadChatService {
 
         List<SquadChatImage> images = imageUrls.stream()
                 .map(url -> new SquadChatImage(null, null, url))
-                .toList(); // todo openchat이랑 비교가 필요함
+                .toList();
 
         SquadChat chat = SquadChat.image(user, squad, images);
         return squadChatRepository.save(chat);
@@ -113,7 +113,7 @@ public class SquadChatService {
         SquadChat targetChat = squadChatRepository.findById(targetChatId)
                 .orElseThrow(() -> new SquadException(ErrorCode.CHAT_MESSAGE_NOT_FOUND));
 
-        squadChatRepository.deleteBySquadIdAndType(squadId, ChatType.NOTICE);
+        squadChatRepository.deleteBySquadIdAndNoticeIsNotNull(squadId);
 
         SquadChat notice = SquadChat.notice(targetChat.getUser(), squad, targetChat.getMessage());
         return squadChatRepository.save(notice);

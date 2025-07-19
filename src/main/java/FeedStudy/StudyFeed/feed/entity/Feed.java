@@ -51,7 +51,6 @@ public class Feed extends BaseEntity {
     @OneToMany(mappedBy = "feed", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<FeedComment> comments = new ArrayList<>();
 
-    //todo 질문하기
     public Feed(User user, FeedRequest request, List<FeedImage> images) {
         this.user = user;
         this.content = request.getContent();
