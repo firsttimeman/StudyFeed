@@ -17,4 +17,6 @@ public class ChatMessageResponseDto {
     private boolean isMine;
     private boolean deletable;
 
+    private String nickname;
+    private String profileImage;
 }

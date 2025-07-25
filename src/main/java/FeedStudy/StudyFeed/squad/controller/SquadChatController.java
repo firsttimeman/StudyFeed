@@ -77,14 +77,26 @@ public class SquadChatController {
     private ChatMessageResponseDto toResponseDto(User user, SquadChat chat) {
         List<String> imageUrls = chat.getImages().stream().map(SquadChatImage::getUrl).toList();
 
+        User sender = chat.getUser();
+
+        Long senderId = (sender != null) ? sender.getId() : null;
+        String nickname = (sender != null) ? sender.getNickName() : "탈퇴한 회원입니다";
+        String profileImage = (sender != null) ? sender.getImageUrl() : "avatar_placeholder.png";
+
+        boolean isMine = (sender != null) && user.getId().equals(senderId);
+        boolean deletable = "삭제된 메세지 입니다.".equals(chat.getMessage());
+
+
         return ChatMessageResponseDto.builder()
                 .squadId(chat.getSquad().getId())
-                .senderId(chat.getUser().getId())
+                .senderId(senderId)
                 .message(chat.getMessage())
                 .imageUrls(imageUrls)
                 .type(chat.getType())
-                .isMine(user.getId().equals(chat.getUser().getId()))
-                .deletable("삭제된 메세지 입니다.".equals(chat.getMessage()))
+                .isMine(isMine)
+                .deletable(deletable)
+                .nickname(nickname)
+                .profileImage(profileImage)
                 .build();
     }
 

@@ -2,6 +2,8 @@ package FeedStudy.StudyFeed.openchat.repository;
 
 import FeedStudy.StudyFeed.global.type.ChatType;
 import FeedStudy.StudyFeed.openchat.entity.ChatMessage;
+import FeedStudy.StudyFeed.openchat.entity.ChatRoom;
+import FeedStudy.StudyFeed.user.entity.User;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -32,4 +34,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
         AND c.createdAt BETWEEN :start AND :end
         """)
     long countByTodayDateChat(@Param("roomId") Long roomId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    List<ChatMessage> findByChatRoomAndSender(ChatRoom room, User user);
 }

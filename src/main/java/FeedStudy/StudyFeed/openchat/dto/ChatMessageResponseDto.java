@@ -11,6 +11,8 @@ import java.util.List;
 public class ChatMessageResponseDto {
     private Long roomId;
     private Long senderId;
+    private String nickname;          // 추가
+    private String profileImageUrl;   // 추가
     private String content;
     private ChatType type;
     private List<String> imageUrls;

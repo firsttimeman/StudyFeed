@@ -33,7 +33,7 @@ public class ChatImage extends BaseEntity {
 
     public void initChatMessage(ChatMessage message) {
         if(this.chatMessage == null) {
-            this.chatMessage = chatMessage;
+            this.chatMessage = message;
         }
     }
 }

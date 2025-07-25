@@ -42,9 +42,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
 
 
-    public void sendVerifyMail(SignUpRequestDto req) {
-
-        String email = req.getEmail();
+    public void sendVerifyMail(String email) {
 
         String authCode = authCodeService.generateAuthCode();
         authCodeService.saveAuthCode(email, authCode);

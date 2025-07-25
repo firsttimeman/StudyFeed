@@ -47,7 +47,7 @@ public class User extends BaseEntity {
 
 
     @Column(nullable = true)
-    private Boolean  receiveEvent = false;
+    private Boolean receiveEvent = false;
     @Column(nullable = true)
     private Boolean feedAlarm = false;
     @Column(nullable = true)

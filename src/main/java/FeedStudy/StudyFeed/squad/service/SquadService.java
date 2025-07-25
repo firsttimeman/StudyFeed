@@ -136,6 +136,24 @@
 
             joinSquad(user, squad);
 
+            if(squad.getJoinType() == JoinType.DIRECT) {
+                List<String> fcmTokens = squad.getMembers().stream()
+                        .filter(member -> member.getAttendanceStatus() == AttendanceStatus.JOINED)
+                        .filter(member -> !member.getUser().getId().equals(user.getId()))
+                        .map(member -> member.getUser().getFcmToken())
+                        .filter(obj -> Objects.nonNull(obj))
+                        .toList();
+
+                String pushTitle = squad.getTitle();
+                String pushContent = "새로운 멤버가 들어왔어요! 어서 인사해보세요 👉🏻";
+                String data = squad.getId() + ",squad";
+
+                for (String token : fcmTokens) {
+                    firebaseMessagingService.sendCommentNotification(true, token, pushTitle, pushContent, data);
+                }
+            }
+
+
             return Map.of("status", squad.getJoinType().equals(JoinType.APPROVAL) ? "requested" : "approved");
 
         }
@@ -204,14 +222,6 @@
             squad.joinParticipant(squadMember);
             squadRepository.save(squad);
 
-            // firebase 알람 처리
-            String fcmToken = squad.getUser().getFcmToken();
-            boolean feedAlarm = squad.getUser().getFeedAlarm();
-            String title = "모임에 새로운 멤버가 참여했습니다.";
-            String content = String.format("회원님의 모임글 [%s]에 새로운 멤버가 참여했습니다.",
-                    squad.getTitle().substring(0, Math.min(20, squad.getTitle().length())));
-            String data = squad.getId() + ",squad";
-            firebaseMessagingService.sendCommentNotification(feedAlarm, fcmToken, title, content, data);
         }
 
 
@@ -219,19 +229,47 @@
         public void approveParticipant(User user, Long userId, Long squadId) {
             Squad squad = findSquad(squadId);
             User members = findUser(userId);
+
             if (!Objects.equals(squad.getUser().getId(), user.getId())) {
                 throw new SquadException(ErrorCode.NOT_SQUAD_OWNER);
             }
             long joinedCount = squad.getMembers().stream()
                     .filter(member -> member.getAttendanceStatus() == AttendanceStatus.JOINED).count();
+
             if (joinedCount >= squad.getMaxParticipants()) {
                 throw new SquadException(ErrorCode.SQUAD_FULL);
             }
+
             SquadMember squadMember = squad.getMembers().stream()
                     .filter(m -> m.getUser().equals(members))
                     .findAny().orElseThrow(() -> new SquadException(ErrorCode.SQUAD_MEMBER_NOT_FOUND));
+
             squadMember.setAttendanceStatus(AttendanceStatus.JOINED);
             squadMemberRepository.save(squadMember);
+
+
+            String title = squad.getTitle();
+            String data = squad.getId() + ",squad";
+
+            String fcmToken = members.getFcmToken();
+            boolean alarm = members.getFeedAlarm();
+            String contentToMember = "모임의 멤버가 되었습니다! 어서 인사해보세요🎉";
+
+            firebaseMessagingService.sendCommentNotification(alarm, fcmToken, title, contentToMember, data);
+
+            List<String> fcmTokens = squad.getMembers().stream()
+                    .filter(m -> m.getAttendanceStatus() == AttendanceStatus.JOINED)
+                    .filter(m -> !m.getUser().getId().equals(members.getId())) // 승인된 본인은 제외
+                    .map(m -> m.getUser().getFcmToken())
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            String contentToOthers = "새로운 멤버가 들어왔어요! 어서 인사해보세요 👉🏻";
+
+            for (String token : fcmTokens) {
+                firebaseMessagingService.sendCommentNotification(true, token, title, contentToOthers, data);
+            }
+
         }
 
         public void rejectParticipant(User user, Long userId, Long squadId) {
@@ -245,6 +283,10 @@
                     .findAny().orElseThrow(() -> new SquadException(ErrorCode.SQUAD_MEMBER_NOT_FOUND));
             squadMember.setAttendanceStatus(AttendanceStatus.REJECTED);
             squadMemberRepository.save(squadMember);
+
+            firebaseMessagingService.sendCommentNotification(members.getFeedAlarm(),
+                    members.getFcmToken(), squad.getTitle(), "모임 신청 결과를 확인해보세요 👉", squadId + ",squad");
+
         }
 
 
@@ -263,6 +305,10 @@
             squad.decreaseCurrentCount();
             squadRepository.save(squad);
             squadMemberRepository.save(participant);
+
+            firebaseMessagingService.sendCommentNotification(members.getFeedAlarm(),
+                    members.getFcmToken(), squad.getTitle(), "이 모임의 멤버로 활동이 어렵게 되었어요🥲", squadId + ",squad");
+
         }
 
         public void leaveSquad(User user, Long squadId) {

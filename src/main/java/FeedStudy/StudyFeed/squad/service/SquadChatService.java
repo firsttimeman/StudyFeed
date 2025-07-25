@@ -3,7 +3,9 @@ package FeedStudy.StudyFeed.squad.service;
 
 import FeedStudy.StudyFeed.global.exception.ErrorCode;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.SquadException;
+import FeedStudy.StudyFeed.global.service.FirebaseMessagingService;
 import FeedStudy.StudyFeed.global.service.S3FileService;
+import FeedStudy.StudyFeed.global.type.AttendanceStatus;
 import FeedStudy.StudyFeed.global.type.ChatType;
 import FeedStudy.StudyFeed.squad.entity.Squad;
 import FeedStudy.StudyFeed.squad.entity.SquadChat;
@@ -30,6 +32,7 @@ public class SquadChatService {
     private final UserRepository userRepository;
     private final SquadChatRepository squadChatRepository;
     private final S3FileService s3FileService;
+    private final FirebaseMessagingService firebaseMessagingService;
 
     public SquadChat sendTextMessage(Long squadId, Long userId, String message) {
         Squad squad = getSquad(squadId);
@@ -38,6 +41,9 @@ public class SquadChatService {
         insertDateMessageIfNeededSquad(squad);
 
         SquadChat squadChat = SquadChat.text(user, squad, message);
+
+        sendChatPushToOtherMembers(squad, user, message);
+
         return squadChatRepository.save(squadChat);
     }
 
@@ -116,6 +122,9 @@ public class SquadChatService {
         squadChatRepository.deleteBySquadIdAndNoticeIsNotNull(squadId);
 
         SquadChat notice = SquadChat.notice(targetChat.getUser(), squad, targetChat.getMessage());
+
+        sendNoticePushToAllMembers(squad, targetChat.getMessage());
+
         return squadChatRepository.save(notice);
     }
 
@@ -153,5 +162,28 @@ public class SquadChatService {
     private Squad getSquad(Long squadId) {
         return squadRepository.findById(squadId)
                 .orElseThrow(() -> new SquadException(ErrorCode.SQUAD_NOT_FOUND));
+    }
+
+    private void sendChatPushToOtherMembers(Squad squad, User sender, String message) {
+        String title = sender.getNickName() + " : " + message;
+        String data = squad.getId() + ",squad";
+
+        squad.getMembers().stream()
+                .filter(m -> m.getAttendanceStatus() == AttendanceStatus.JOINED)
+                .filter(m -> !m.getUser().getId().equals(sender.getId()))
+                .map(m -> m.getUser())
+                .filter(u -> u.getFcmToken() != null && u.getFeedAlarm()) // 알람 설정한 사람만
+                .forEach(u -> firebaseMessagingService.sendCommentNotification(true, u.getFcmToken(), squad.getTitle(), title, data));
+    }
+
+    private void sendNoticePushToAllMembers(Squad squad, String message) {
+        String title = "고리의 새로운 공지를 확인해보세요 👉🏻";
+        String data = squad.getId() + ",squad";
+
+        squad.getMembers().stream()
+                .filter(m -> m.getAttendanceStatus() == AttendanceStatus.JOINED)
+                .map(m -> m.getUser())
+                .filter(u -> u.getFcmToken() != null && u.getFeedAlarm())
+                .forEach(u -> firebaseMessagingService.sendCommentNotification(true, u.getFcmToken(), title, message, data));
     }
 }

@@ -3,6 +3,7 @@ package FeedStudy.StudyFeed.user.service;
 import FeedStudy.StudyFeed.auth.service.AuthCodeService;
 import FeedStudy.StudyFeed.feed.entity.Feed;
 import FeedStudy.StudyFeed.feed.entity.FeedComment;
+import FeedStudy.StudyFeed.feed.entity.FeedImage;
 import FeedStudy.StudyFeed.feed.repository.FeedCommentRepository;
 import FeedStudy.StudyFeed.feed.repository.FeedImageRepository;
 import FeedStudy.StudyFeed.feed.repository.FeedLikeRepository;
@@ -12,8 +13,16 @@ import FeedStudy.StudyFeed.global.exception.exceptiontype.MemberException;
 import FeedStudy.StudyFeed.global.jwt.JwtUtil;
 import FeedStudy.StudyFeed.global.service.S3FileService;
 import FeedStudy.StudyFeed.global.utils.NickNameUtils;
+import FeedStudy.StudyFeed.openchat.entity.ChatImage;
+import FeedStudy.StudyFeed.openchat.entity.ChatMessage;
+import FeedStudy.StudyFeed.openchat.entity.ChatRoom;
+import FeedStudy.StudyFeed.openchat.entity.ChatRoomUser;
+import FeedStudy.StudyFeed.openchat.repository.ChatMessageRepository;
+import FeedStudy.StudyFeed.openchat.repository.ChatRoomRepository;
+import FeedStudy.StudyFeed.openchat.repository.ChatRoomUserRepository;
 import FeedStudy.StudyFeed.squad.entity.Squad;
 import FeedStudy.StudyFeed.squad.entity.SquadChat;
+import FeedStudy.StudyFeed.squad.entity.SquadChatImage;
 import FeedStudy.StudyFeed.squad.entity.SquadMember;
 import FeedStudy.StudyFeed.squad.repository.SquadChatRepository;
 import FeedStudy.StudyFeed.squad.repository.SquadMemberRepository;
@@ -29,7 +38,6 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -80,6 +88,12 @@ public class UserService {
     @Autowired
     private SquadMemberRepository squadMemberRepository;
     private SquadRepository squadRepository;
+    @Autowired
+    private ChatRoomRepository chatRoomRepository;
+    @Autowired
+    private ChatRoomUserRepository chatRoomUserRepository;
+    @Autowired
+    private ChatMessageRepository chatMessageRepository;
 
 //    public void RegisterUser(String email) throws MessagingException {
 //
@@ -290,45 +304,94 @@ public class UserService {
             throw new MemberException(ErrorCode.USER_NOT_FOUND);
         }
 
+        String profileImageUrl = user.getImageUrl();
+        if(profileImageUrl != null && !profileImageUrl.isBlank() &&
+           !profileImageUrl.equals("avatar_placeholder.png")) {
+            String fileName = profileImageUrl.substring(profileImageUrl.lastIndexOf("/") + 1);
+            s3FileService.delete(fileName);
+        }
+
+
+        List<FeedComment> otherComments = feedCommentRepository.findByUser(user).stream()
+                                             .filter(comment -> !comment.getFeed().getUser().equals(user))
+                                                  .toList();
+
+        for (FeedComment otherComment : otherComments) {
+            otherComment.setUser(null);
+        } // 다른 사람의 피드에서 작성자만 null 처리 글들은 삭제 X
+
+        feedLikeRepository.deleteAllByUser(user); // 다른 사용자의 피드에서 like를 없애는 기능
+
+
+
         List<Feed> userFeeds = feedRepository.findByUser(user);
-        for (Feed feed : userFeeds) {
-            feedImageRepository.deleteAllByFeed(feed);
-            feedLikeRepository.deleteAllByFeed(feed);
-            feedRepository.delete(feed);
+        List<FeedImage> feedImages = feedImageRepository.findAllByFeedIn(userFeeds);
+        for (FeedImage feedImage : feedImages) {
+            s3FileService.delete(feedImage.getUniqueName());
         }
 
 
-        List<FeedComment> comments = feedCommentRepository.findByUser(user);
-        for (FeedComment comment : comments) {
-            comment.setUser(null);
-        }
+        feedRepository.deleteAll(userFeeds); // 최종적으로 탈퇴할 유저의 피드를 전부 삭제를 하는 기능
 
-        List<Squad> createdSquads = squadRepository.findByUser(user);
-        for (Squad squad : createdSquads) {
-            List<SquadChat> squadChat = squadChatRepository.findBySquad(squad);
-            squadChatRepository.deleteAll(squadChat);
 
-            List<SquadMember> members = squadMemberRepository.findAllBySquad(squad);
-            squadMemberRepository.deleteAll(members);
-
-            squadRepository.delete(squad);
-        }
-
+        // 7. 유저가 참여한 스쿼드의 채팅들에서 작성자만 null 처리 + 이미지 삭제
         List<SquadMember> joinedSquads = squadMemberRepository.findByUser(user);
         for (SquadMember member : joinedSquads) {
             Squad squad = member.getSquad();
 
-            List<SquadChat> chats = squadChatRepository.findBySquadAndUser(squad, user);
-            for (SquadChat chat : chats) {
-                chat.setUser(null);
+            List<SquadChat> userChats = squadChatRepository.findBySquadAndUser(squad, user);
+            for (SquadChat chat : userChats) {
+                for (SquadChatImage image : chat.getImages()) {
+                    s3FileService.delete(image.getUniqueName());
+                }
+                chat.setUser(null); // 작성자 null 처리
             }
-            squadMemberRepository.delete(member);
+
+            squadMemberRepository.delete(member); // 유저 탈퇴 처리
         }
+
+
+        List<Squad> createdFeeds = squadRepository.findByUser(user);
+        for (Squad squad : createdFeeds) {
+            List<SquadChat> chats = squadChatRepository.findBySquad(squad);
+            for (SquadChat chat : chats) {
+                for (SquadChatImage image : chat.getImages()) {
+                    s3FileService.delete(image.getUniqueName());
+                }
+            }
+            squadChatRepository.deleteAll(chats);
+            squadRepository.delete(squad);
+        }
+
+        List<ChatRoomUser> joinedRooms = chatRoomUserRepository.findByUser(user);
+        for (ChatRoomUser roomUser : joinedRooms) {
+            ChatRoom room = roomUser.getChatRoom();
+
+            List<ChatMessage> userMessage = chatMessageRepository.findByChatRoomAndSender(room, user);
+            for (ChatMessage message : userMessage) {
+                for (ChatImage image : message.getImages()) {
+                    s3FileService.delete(image.getUniqueName());
+                }
+                message.setSender(null);
+            }
+            chatRoomUserRepository.delete(roomUser);
+        }
+
+        List<ChatRoom> createdRooms = chatRoomRepository.findByOwner(user);
+        for (ChatRoom room : createdRooms) {
+            for (ChatMessage message : room.getMessages()) {
+                for (ChatImage image : message.getImages()) {
+                    s3FileService.delete(image.getUniqueName());
+                }
+            }
+            chatRoomRepository.delete(room);
+        }
+
 
         refreshRepository.deleteRefreshToken(user.getEmail());
 
         userRepository.delete(user);
-        //todo 탈퇴설정 천천히 다시 생각
+
     }
 
 

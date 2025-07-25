@@ -1,5 +1,6 @@
 package FeedStudy.StudyFeed.feed.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -16,12 +17,16 @@ public class FeedRequest {
 
 
     @NotBlank
+    @Schema(description = "피드 내용을 입력한다.")
     private String content;
 
     @NotBlank
+    @Schema(description = "피드에 등록할 카테고리")
     private String category;
 
+    @Schema(description = "피드에 추가할 이미지")
     private List<MultipartFile> addedImages = new ArrayList<>();
 
+    @Schema(description = "추후 피드 변경시 이미지")
     private List<String> deletedImages = new ArrayList<>();
 }

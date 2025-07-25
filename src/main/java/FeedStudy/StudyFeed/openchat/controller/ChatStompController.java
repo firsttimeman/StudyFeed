@@ -5,7 +5,6 @@ import FeedStudy.StudyFeed.openchat.dto.ChatDeleteRequestDto;
 import FeedStudy.StudyFeed.openchat.dto.ChatImageRequestDto;
 import FeedStudy.StudyFeed.openchat.dto.ChatMessageRequestDto;
 import FeedStudy.StudyFeed.openchat.dto.ChatMessageResponseDto;
-import FeedStudy.StudyFeed.openchat.entity.ChatImage;
 import FeedStudy.StudyFeed.openchat.entity.ChatMessage;
 import FeedStudy.StudyFeed.openchat.service.ChatService;
 import FeedStudy.StudyFeed.squad.dto.NoticeRequestDto;
@@ -18,6 +17,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
+import java.util.List;
 
 @Controller
 @RequiredArgsConstructor
@@ -68,14 +68,30 @@ public class ChatStompController {
     }
 
     private ChatMessageResponseDto toResponse(User user, ChatMessage message) {
+
+        List<String> imageUrls = message.getImages().stream()
+                .map(chatImage -> chatImage.getUrl())
+                .toList();
+
+        User sender = message.getSender();
+        Long senderId = (sender != null) ? sender.getId() : null;
+        String nickname = (sender != null) ? sender.getNickName() : "탈퇴한 회원입니다";
+        String profileImage = (sender != null) ? sender.getImageUrl() : "avatar_placeholder.png";
+
+        boolean isMine = (sender != null) && user.getId().equals(senderId);
+        boolean deleted = "삭제된 메세지 입니다.".equals(message.getContent());
+
+
         return ChatMessageResponseDto.builder()
                 .roomId(message.getChatRoom().getId())
-                .senderId(message.getSender().getId())
+                .senderId(senderId)
+                .nickname(nickname)
+                .profileImageUrl(profileImage)
                 .content(message.getContent())
                 .type(message.getType())
-                .imageUrls(message.getImages().stream().map(ChatImage::getUrl).toList())
-                .isMine(user.getId().equals(message.getSender().getId()))
-                .deleted("삭제된 메세지 입니다.".equals(message.getContent()))
+                .imageUrls(imageUrls)
+                .isMine(isMine)
+                .deleted(deleted)
                 .build();
     }
 }

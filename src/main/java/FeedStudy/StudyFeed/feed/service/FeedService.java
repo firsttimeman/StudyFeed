@@ -327,23 +327,27 @@ public class FeedService {
                 ? feedCommentRepository.findById(req.getFeedCommentPid())
                 .orElse(null) : null;
 
-        FeedComment comment = feedCommentRepository.save(new FeedComment(user, feed, req.getContent(), parentComment));
+        feedCommentRepository.save(new FeedComment(user, feed, req.getContent(), parentComment));
         feed.increaseCommentCount();
         feedRepository.save(feed);
 
-        String fcmToken, pushTitle;
-        Boolean isAlarm = null;
-        System.out.println("testing: " + (isAlarm == null));
-        if(req.getFeedCommentPid() == null) {
+        String fcmToken;
+        Boolean isAlarm;
+        String pushTitle;
+        String pushContent = req.getContent();
+        String data = feed.getId() + ",feed";
+
+        if (parentComment == null) {
             fcmToken = feed.getUser().getFcmToken();
             isAlarm = feed.getUser().getFeedAlarm();
             pushTitle = "작성하신 글의 새로운 댓글입니다.";
         } else {
-            fcmToken = feed.getUser().getFcmToken();
-            isAlarm = feed.getUser().getFeedAlarm();
+            fcmToken = parentComment.getUser().getFcmToken();
+            isAlarm = parentComment.getUser().getFeedAlarm();
             pushTitle = "작성하신 댓글의 새로운 답글입니다.";
         }
-        firebaseMessagingService.sendCommentNotification(isAlarm, fcmToken, pushTitle, req.getContent(), feed.getId() + ",feed");
+
+        firebaseMessagingService.sendCommentNotification(isAlarm, fcmToken, pushTitle, pushContent, data);
     }
 
     public void deleteComment(Long userId, Long commentId) {
