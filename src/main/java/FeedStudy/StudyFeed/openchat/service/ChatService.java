@@ -2,7 +2,9 @@ package FeedStudy.StudyFeed.openchat.service;
 
 import FeedStudy.StudyFeed.global.exception.ErrorCode;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.MemberException;
+import FeedStudy.StudyFeed.global.service.FirebaseMessagingService;
 import FeedStudy.StudyFeed.global.service.S3FileService;
+import FeedStudy.StudyFeed.global.type.AttendanceStatus;
 import FeedStudy.StudyFeed.openchat.dto.ChatRoomCreateRequestDto;
 import FeedStudy.StudyFeed.openchat.dto.ChatRoomCreateResponseDto;
 import FeedStudy.StudyFeed.openchat.entity.ChatImage;
@@ -13,6 +15,8 @@ import FeedStudy.StudyFeed.openchat.repository.ChatImageRepository;
 import FeedStudy.StudyFeed.openchat.repository.ChatMessageRepository;
 import FeedStudy.StudyFeed.openchat.repository.ChatRoomRepository;
 import FeedStudy.StudyFeed.openchat.repository.ChatRoomUserRepository;
+import FeedStudy.StudyFeed.openchat.type.ChatRoomUserStatus;
+import FeedStudy.StudyFeed.squad.entity.Squad;
 import FeedStudy.StudyFeed.squad.util.ChatTokenProvider;
 import FeedStudy.StudyFeed.user.entity.User;
 import FeedStudy.StudyFeed.user.repository.UserRepository;
@@ -26,6 +30,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -40,6 +45,7 @@ public class ChatService {
     private final ChatImageRepository chatImageRepository;
     private final ChatRoomUserRepository chatRoomUserRepository;
     private final ChatTokenProvider chatTokenProvider;
+    private final FirebaseMessagingService firebaseMessagingService;
 
     public ChatRoomCreateResponseDto createChatRoom(Long userId, ChatRoomCreateRequestDto dto) {
 
@@ -63,25 +69,31 @@ public class ChatService {
         User user = getUser(userId);
 
         // 이미 참여 중인지 확인
-        if (chatRoomUserRepository.existsByChatRoomAndUser(room, user)) {
-            String openChatToken = chatTokenProvider.createOpenChatToken(user, room);
-            return Map.of(
-                    "status", "already joined",
-                    "chatToken", openChatToken
-            );
+        ChatRoomUser cru = chatRoomUserRepository.findByChatRoomAndUser(room, user).orElse(null);
+
+        if (cru != null) {
+            if (cru.getStatus() == ChatRoomUserStatus.JOINED) {
+                // 이미 참여 중
+                String openChatToken = chatTokenProvider.createOpenChatToken(user, room);
+                return Map.of("status", "already joined", "chatToken", openChatToken);
+            } else if (cru.getStatus() == ChatRoomUserStatus.LEFT) {
+                // 재입장
+                cru.setStatus(ChatRoomUserStatus.JOINED);
+                room.incrementParticipantCount();
+                String openChatToken = chatTokenProvider.createOpenChatToken(user, room);
+                return Map.of("status", "rejoined", "chatToken", openChatToken);
+            } else if (cru.getStatus() == ChatRoomUserStatus.KICKED) {
+                throw new IllegalStateException("강퇴된 유저는 재입장할 수 없습니다.");
+            }
         }
 
+        // 처음 입장
+        ChatRoomUser newUser = ChatRoomUser.create(room, user, false);
+        chatRoomUserRepository.save(newUser);
         room.incrementParticipantCount();
-        ChatRoomUser cru = ChatRoomUser.create(room, user, false);
-        chatRoomUserRepository.save(cru);
 
         String openChatToken = chatTokenProvider.createOpenChatToken(user, room);
-
-
-        return Map.of(
-                "status", "joined",
-                "chatToken", openChatToken
-        );
+        return Map.of("status", "joined", "chatToken", openChatToken);
     }
 
 
@@ -97,7 +109,7 @@ public class ChatService {
             throw new IllegalStateException("방장은 채팅방을 나갈 수 없습니다.");
         }
 
-        chatRoomUserRepository.delete(cru);
+        cru.setStatus(ChatRoomUserStatus.LEFT);
         room.decrementParticipantCount();
     }
 
@@ -116,6 +128,25 @@ public class ChatService {
     }
 
 
+    public void kickParticipant(Long roomId, User user) {
+
+        ChatRoom chatRoom = getChatRoom(roomId);
+        User owner = chatRoom.getOwner();
+
+        if(!owner.getId().equals(user.getId())) {
+            ChatRoomUser chatRoomUser = chatRoomUserRepository.findByChatRoomAndUser(chatRoom, user)
+                    .orElseThrow(() -> new IllegalArgumentException("해당 사용자는 이 채팅방에 속해있지 않습니다."));
+
+            chatRoomUser.setStatus(ChatRoomUserStatus.KICKED);
+            chatRoom.decrementParticipantCount();
+        } else {
+            throw new IllegalArgumentException("방장은 강퇴할 수 없습니다.");
+        }
+
+
+    }
+
+
     public ChatMessage createTextMessage(Long roomId, Long userId, String content) {
         ChatRoom chatRoom = getChatRoom(roomId);
         User user = getUser(userId);
@@ -123,6 +154,9 @@ public class ChatService {
         insertDateMessageIfNeededChat(chatRoom);
 
         ChatMessage text = ChatMessage.createText(user, chatRoom, content);
+
+        sendOpenChatPushToOtherMembers(chatRoom, user, content);
+
         return chatMessageRepository.save(text);
     }
 
@@ -137,6 +171,9 @@ public class ChatService {
                 .toList();
 
         ChatMessage image = ChatMessage.image(user, chatRoom, images);
+
+        sendImagePushOpenChatToOtherMembers(chatRoom, user);
+
         return chatMessageRepository.save(image);
     }
 
@@ -231,6 +268,45 @@ public class ChatService {
     private ChatRoom getChatRoom(Long roomId) {
         return chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new IllegalArgumentException("채팅방을 못찾았습니다."));
+
+    }
+
+    private void sendOpenChatPushToOtherMembers(ChatRoom room, User sender, String message) {
+        String title = room.getTitle();
+        String body = sender.getNickName() + " : " + message;
+        String data = room.getId() + ",chat";
+
+        List<String> fcmTokens = room.getUsers().stream()
+                .map(u -> u.getUser())
+                .filter(u -> !u.getId().equals(sender.getId()))
+                .filter(u -> Boolean.TRUE.equals(u.getChatroomAlarm()))
+                .map(u -> u.getFcmToken())
+                .filter(token -> token != null && !token.isBlank())
+                .toList();
+
+        if (!fcmTokens.isEmpty()) {
+            firebaseMessagingService.sendCommentNotificationToMany(true, fcmTokens, title, body, data);
+        }
+    }
+
+
+    private void sendImagePushOpenChatToOtherMembers(ChatRoom room, User sender) {
+        String title = room.getTitle();
+        String body = sender.getNickName() + "님이 사진을 보냈어요 📸";
+        String data = room.getId() + ",chat";
+
+        List<String> fcmTokens = room.getUsers().stream()
+                .map(ChatRoomUser::getUser)
+                .filter(user -> !user.getId().equals(sender.getId()))
+                .filter(user -> Boolean.TRUE.equals(user.getChatroomAlarm()))
+                .map(User::getFcmToken)
+                .filter(token -> token != null && !token.isBlank())
+                .toList();
+
+
+        if (!fcmTokens.isEmpty()) {
+            firebaseMessagingService.sendCommentNotificationToMany(true, fcmTokens, title, body, data);
+        }
 
     }
 }

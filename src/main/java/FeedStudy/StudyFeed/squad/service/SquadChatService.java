@@ -22,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -45,6 +46,9 @@ public class SquadChatService {
         sendChatPushToOtherMembers(squad, user, message);
 
         return squadChatRepository.save(squadChat);
+
+
+
     }
 
 
@@ -59,7 +63,29 @@ public class SquadChatService {
                 .toList();
 
         SquadChat chat = SquadChat.image(user, squad, images);
+
+        sendImagePushToOtherMembers(squad, user);
         return squadChatRepository.save(chat);
+    }
+
+    private void sendImagePushToOtherMembers(Squad squad, User sender) {
+        String title = squad.getTitle();
+        String body = sender.getNickName() + "님이 사진을 보냈어요 📸";
+        String data = squad.getId() + ",squad";
+
+        List<String> fcmTokens = squad.getMembers().stream()
+                .filter(m -> m.getAttendanceStatus() == AttendanceStatus.JOINED)
+                .filter(m -> !m.getUser().getId().equals(sender.getId()))
+                .map(m -> m.getUser())
+                .filter(u -> Boolean.TRUE.equals(u.getSquadChatAlarm()))
+                .map(u -> u.getFcmToken())
+                .filter(obj -> Objects.nonNull(obj))
+                .toList();
+
+        if (!fcmTokens.isEmpty()) {
+            firebaseMessagingService.sendCommentNotificationToMany(true, fcmTokens, title, body, data);
+        }
+
     }
 
     public List<String> uploadImagesAndReturnUrls(Long squadId, Long userId, List<MultipartFile> images) {
@@ -123,7 +149,6 @@ public class SquadChatService {
 
         SquadChat notice = SquadChat.notice(targetChat.getUser(), squad, targetChat.getMessage());
 
-        sendNoticePushToAllMembers(squad, targetChat.getMessage());
 
         return squadChatRepository.save(notice);
     }
@@ -165,25 +190,23 @@ public class SquadChatService {
     }
 
     private void sendChatPushToOtherMembers(Squad squad, User sender, String message) {
-        String title = sender.getNickName() + " : " + message;
+        String title = squad.getTitle();
+        String body = sender.getNickName() + " : " + message;
         String data = squad.getId() + ",squad";
 
-        squad.getMembers().stream()
+        List<String> fcmTokens = squad.getMembers().stream()
                 .filter(m -> m.getAttendanceStatus() == AttendanceStatus.JOINED)
                 .filter(m -> !m.getUser().getId().equals(sender.getId()))
                 .map(m -> m.getUser())
-                .filter(u -> u.getFcmToken() != null && u.getFeedAlarm()) // 알람 설정한 사람만
-                .forEach(u -> firebaseMessagingService.sendCommentNotification(true, u.getFcmToken(), squad.getTitle(), title, data));
+                .filter(u -> Boolean.TRUE.equals(u.getSquadChatAlarm()))
+                .map(u -> u.getFcmToken())
+                .filter(obj -> Objects.nonNull(obj))
+                .toList();
+
+        if (!fcmTokens.isEmpty()) {
+            firebaseMessagingService.sendCommentNotificationToMany(true, fcmTokens, title, body, data);
+        }
     }
 
-    private void sendNoticePushToAllMembers(Squad squad, String message) {
-        String title = "고리의 새로운 공지를 확인해보세요 👉🏻";
-        String data = squad.getId() + ",squad";
 
-        squad.getMembers().stream()
-                .filter(m -> m.getAttendanceStatus() == AttendanceStatus.JOINED)
-                .map(m -> m.getUser())
-                .filter(u -> u.getFcmToken() != null && u.getFeedAlarm())
-                .forEach(u -> firebaseMessagingService.sendCommentNotification(true, u.getFcmToken(), title, message, data));
-    }
 }

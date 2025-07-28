@@ -1,9 +1,11 @@
 package FeedStudy.StudyFeed.global.service;
 
-import FeedStudy.StudyFeed.user.entity.User;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.Collections;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +23,18 @@ public class FirebaseMessagingService {
         }
         return null;
 
+    }
+
+
+    public List<String> sendCommentNotificationToMany(Boolean isAlarm, List<String> tokens, String title, String content, String data) {
+        if (isAlarm != null && isAlarm && tokens != null && !tokens.isEmpty()) {
+            try {
+                return publisherService.postToClients(title, content, data, tokens);
+            } catch (FirebaseMessagingException e) {
+                e.printStackTrace(); // 필요 시 logger로 변경
+            }
+        }
+        return Collections.emptyList();
     }
 
 }

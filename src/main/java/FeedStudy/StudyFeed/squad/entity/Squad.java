@@ -67,9 +67,6 @@ public class Squad extends BaseEntity {
     @Column(nullable = false)
     private boolean closed = false;
 
-    @Column
-    private boolean notifySent = false;
-
 
     @Builder
     private Squad(User user, SquadRequest req) {

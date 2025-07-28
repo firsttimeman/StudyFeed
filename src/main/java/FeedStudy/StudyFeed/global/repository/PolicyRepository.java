@@ -1,10 +1,10 @@
 package FeedStudy.StudyFeed.global.repository;
 
-import FeedStudy.StudyFeed.global.entity.Setting;
+import FeedStudy.StudyFeed.global.entity.PolicySettings;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface SettingRepository extends JpaRepository<Setting, Long> {
+public interface PolicyRepository extends JpaRepository<PolicySettings, Long> {
 
 }

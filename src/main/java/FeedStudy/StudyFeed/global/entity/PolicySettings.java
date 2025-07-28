@@ -10,7 +10,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 @Entity
-public class Setting extends BaseEntity{
+public class PolicySettings extends BaseEntity{
 
     @Column(columnDefinition = "TEXT")
     private String privacy;
@@ -18,8 +18,7 @@ public class Setting extends BaseEntity{
     @Column(columnDefinition = "TEXT")
     private String terms;
 
-    @Builder.Default
-    private boolean isUnderMaintenance = false;
+
 
 
 }

@@ -140,16 +140,30 @@
                 List<String> fcmTokens = squad.getMembers().stream()
                         .filter(member -> member.getAttendanceStatus() == AttendanceStatus.JOINED)
                         .filter(member -> !member.getUser().getId().equals(user.getId()))
-                        .map(member -> member.getUser().getFcmToken())
+                        .map(member -> member.getUser())
+                        .filter(u -> Boolean.TRUE.equals(u.getSquadChatAlarm()))
+                        .map(u -> u.getFcmToken())
                         .filter(obj -> Objects.nonNull(obj))
                         .toList();
 
-                String pushTitle = squad.getTitle();
-                String pushContent = "새로운 멤버가 들어왔어요! 어서 인사해보세요 👉🏻";
-                String data = squad.getId() + ",squad";
+                if(!fcmTokens.isEmpty()) {
+                    String pushTitle = squad.getTitle();
+                    String pushContent = "새로운 멤버가 들어왔어요! 어서 인사해보세요 👉🏻";
+                    String data = squad.getId() + ",squad";
 
-                for (String token : fcmTokens) {
-                    firebaseMessagingService.sendCommentNotification(true, token, pushTitle, pushContent, data);
+                    firebaseMessagingService.sendCommentNotificationToMany(true, fcmTokens, pushTitle, pushContent, data);
+                }
+
+
+
+            } else if(squad.getJoinType() == JoinType.APPROVAL) {
+                User owner = squad.getUser();
+                if(Boolean.TRUE.equals(owner.getSquadChatAlarm()) && owner.getFcmToken() != null) {
+                    String pushTitle = squad.getTitle();
+                    String pushContent = "새로운 신청자가 생겼어요! 누구일까요? 👀";
+                    String data = squad.getId() + ",squad";
+                    firebaseMessagingService.sendCommentNotification(true, owner.getFcmToken(),
+                            pushTitle, pushContent, data);
                 }
             }
 
@@ -230,9 +244,11 @@
             Squad squad = findSquad(squadId);
             User members = findUser(userId);
 
+
             if (!Objects.equals(squad.getUser().getId(), user.getId())) {
                 throw new SquadException(ErrorCode.NOT_SQUAD_OWNER);
             }
+
             long joinedCount = squad.getMembers().stream()
                     .filter(member -> member.getAttendanceStatus() == AttendanceStatus.JOINED).count();
 
@@ -244,8 +260,11 @@
                     .filter(m -> m.getUser().equals(members))
                     .findAny().orElseThrow(() -> new SquadException(ErrorCode.SQUAD_MEMBER_NOT_FOUND));
 
-            squadMember.setAttendanceStatus(AttendanceStatus.JOINED);
-            squadMemberRepository.save(squadMember);
+            if(squadMember.getAttendanceStatus() == AttendanceStatus.PENDING) {
+
+                squadMember.setAttendanceStatus(AttendanceStatus.JOINED);
+                squadMemberRepository.save(squadMember);
+            }
 
 
             String title = squad.getTitle();
@@ -259,15 +278,17 @@
 
             List<String> fcmTokens = squad.getMembers().stream()
                     .filter(m -> m.getAttendanceStatus() == AttendanceStatus.JOINED)
-                    .filter(m -> !m.getUser().getId().equals(members.getId())) // 승인된 본인은 제외
-                    .map(m -> m.getUser().getFcmToken())
+                    .filter(m -> !m.getUser().getId().equals(members.getId()))
+                    .map(m -> m.getUser())
+                    .filter(u -> Boolean.TRUE.equals(u.getSquadChatAlarm()))
+                    .map(u -> u.getFcmToken())
                     .filter(Objects::nonNull)
                     .toList();
 
-            String contentToOthers = "새로운 멤버가 들어왔어요! 어서 인사해보세요 👉🏻";
 
-            for (String token : fcmTokens) {
-                firebaseMessagingService.sendCommentNotification(true, token, title, contentToOthers, data);
+            if(!fcmTokens.isEmpty()) {
+                String contentToOthers = "새로운 멤버가 들어왔어요! 어서 인사해보세요 👉🏻";
+                firebaseMessagingService.sendCommentNotificationToMany(true, fcmTokens, title, contentToOthers, data);
             }
 
         }

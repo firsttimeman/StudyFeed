@@ -70,11 +70,20 @@ public class ChatRestController {
     }
 
     @Operation(summary = "채팅방 나가기", description = "오픈 채팅방에서 나갑니다.")
-    @DeleteMapping("/{roomId}/leave")
+    @PostMapping("/{roomId}/leave")
     public ResponseEntity<?> leaveChatRoom(@AuthenticationPrincipal User user,
                                            @Parameter(description = "채팅방 ID", example = "1")
                                            @PathVariable Long roomId) {
         chatService.leaveChatRoom(roomId, user.getId());
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "채팅방 벤기능", description = "오픈 채팅방에서 사용자를 벤합니다.")
+    @PostMapping("/{roomId}/kick")
+    public ResponseEntity<?> kickParticipants(@AuthenticationPrincipal User user,
+                                              @Parameter(description = "채팅방 ID", example = "1")
+                                              @PathVariable Long roomId) {
+        chatService.kickParticipant(roomId, user);
         return ResponseEntity.ok().build();
     }
 

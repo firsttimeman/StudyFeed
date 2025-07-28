@@ -1,10 +1,7 @@
 package FeedStudy.StudyFeed.global.service;
 
 import FeedStudy.StudyFeed.global.dto.PushRequest;
-import com.google.firebase.messaging.FirebaseMessaging;
-import com.google.firebase.messaging.FirebaseMessagingException;
-import com.google.firebase.messaging.Message;
-import com.google.firebase.messaging.Notification;
+import com.google.firebase.messaging.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -57,6 +54,40 @@ public class FirebasePublisherService {
         String id = fcm.send(msg);
         return id;
         //특정 토큰을 지닌 사용자에게
+    }
+
+
+    public List<String> postToClients(String title, String message, String data, List<String> registrationTokens)
+            throws FirebaseMessagingException {
+
+        String[] pushData = data.split(",");
+        Map<String, String> dataMap = new HashMap<>();
+        dataMap.put("id", pushData[0]);
+        dataMap.put("type", pushData[1]);
+
+        Notification notification = Notification
+                .builder()
+                .setTitle(title)
+                .setBody(message)
+                .build();
+
+        MulticastMessage msg = MulticastMessage.builder()
+                .addAllTokens(registrationTokens)
+                .setNotification(notification)
+                .putAllData(dataMap)
+                .build();
+
+        BatchResponse batchResponse = fcm.sendMulticast(msg);
+        
+        List<String> responseIds = new ArrayList<>();
+        for (SendResponse response : batchResponse.getResponses()) {
+            if(response.isSuccessful()) {
+                responseIds.add(response.getMessageId());
+            }
+        }
+        
+        return responseIds;
+
     }
 
     public void createSubscription(String topic, @RequestBody List<String> registrationTokens) throws FirebaseMessagingException {
