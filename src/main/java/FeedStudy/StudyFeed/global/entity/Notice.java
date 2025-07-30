@@ -17,7 +17,7 @@ public class Notice extends BaseEntity {
 
     private String content;
 
-    private boolean isVisible;
+    private boolean visible;
 
     private LocalDate publishDate;
 

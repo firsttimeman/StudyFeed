@@ -20,7 +20,7 @@ public class NoticeService {
         Notice notice = Notice.builder()
                 .title(request.getTitle())
                 .content(request.getContent())
-                .isVisible(request.isVisible())
+                .visible(request.isVisible())
                 .build();
 
         return toResponse(noticeRepository.save(notice));
@@ -40,7 +40,7 @@ public class NoticeService {
     }
 
     public List<NoticeResponse> getHiddenNotices() {
-        return noticeRepository.findAllByIsVisibleFalseOrderByCreatedAtDesc()
+        return noticeRepository.findAllByVisibleFalseOrderByCreatedAtDesc()
                 .stream().map(this::toResponse)
                 .toList();
     }
