@@ -51,12 +51,20 @@ public class AuthService {
 
     }
 
-    public void signUp(SignUpRequestDto req) {
-
-
-        if(!authCodeService.checkAuthCode(req.getEmail(), req.getAuthcode())) {
+    public void checkAuthCode(String email, String authCode) {
+        boolean check = authCodeService.checkAuthCode(email, authCode);
+        if(!check) {
             throw new AuthCodeException(ErrorCode.AUTH_CODE_MISMATCH);
         }
+    }
+
+
+    public void signUp(SignUpRequestDto req) {
+
+//
+//        if(!authCodeService.checkAuthCode(req.getEmail(), req.getAuthcode())) {
+//            throw new AuthCodeException(ErrorCode.AUTH_CODE_MISMATCH);
+//        }
 
         if(userRepository.existsByEmail(req.getEmail())) {
             throw new MemberException(ErrorCode.EMAIL_ALREADY_EXISTS);

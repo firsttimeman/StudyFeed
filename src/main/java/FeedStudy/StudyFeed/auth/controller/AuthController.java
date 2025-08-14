@@ -29,6 +29,12 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/check_auth_code")
+    public ResponseEntity<?> checkAuthCode(@RequestParam String email, @RequestParam String authCode) {
+        authService.checkAuthCode(email, authCode);
+        return ResponseEntity.ok().build();
+    }
+
 
 
     @PostMapping("/signup")
