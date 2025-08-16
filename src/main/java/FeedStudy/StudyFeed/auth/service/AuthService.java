@@ -3,7 +3,6 @@ package FeedStudy.StudyFeed.auth.service;
 import FeedStudy.StudyFeed.global.exception.ErrorCode;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.AuthCodeException;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.MemberException;
-import FeedStudy.StudyFeed.global.exception.exceptiontype.TokenException;
 import FeedStudy.StudyFeed.global.jwt.JwtUtil;
 import FeedStudy.StudyFeed.user.dto.SignUpRequestDto;
 import FeedStudy.StudyFeed.user.entity.User;
@@ -11,9 +10,7 @@ import FeedStudy.StudyFeed.user.repository.BlackListRepository;
 import FeedStudy.StudyFeed.user.repository.RefreshRepository;
 import FeedStudy.StudyFeed.user.repository.UserRepository;
 import FeedStudy.StudyFeed.user.service.MailService;
-import com.google.api.pathtemplate.ValidationException;
-import io.jsonwebtoken.Claims;
-import jakarta.servlet.http.HttpServletRequest;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,7 +20,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.lang.reflect.Member;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -59,7 +55,8 @@ public class AuthService {
     }
 
 
-    public void signUp(SignUpRequestDto req) {
+    @Transactional
+    public Map<String, String> signUp(SignUpRequestDto req) {
 
 //
 //        if(!authCodeService.checkAuthCode(req.getEmail(), req.getAuthcode())) {
@@ -71,9 +68,24 @@ public class AuthService {
         }
 
         String imageName = "avatar_placeholder.png";
-        User user = new User(req, passwordEncoder.encode(req.getProviderType() + req.getProviderId()), imageName);
-        System.out.println(user);
+        String rawPasswordForSns = req.getProviderType() + req.getProviderId();
+        User user = new User(req, passwordEncoder.encode(rawPasswordForSns), imageName);
         userRepository.save(user);
+
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(req.getEmail(), rawPasswordForSns)
+        );
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        String role = user.getUserRole().name();
+        String accessToken = jwtUtil.createAccessToken(user.getEmail(), role);
+        String refreshToken = jwtUtil.createRefreshToken(user.getEmail(), role);
+        refreshRepository.saveRefreshToken(user.getEmail(), refreshToken);
+
+        Map<String, String> tokens = new HashMap<>();
+        tokens.put("accessToken", accessToken);
+        tokens.put("refreshToken", refreshToken);
+        return tokens;
     }
 
 

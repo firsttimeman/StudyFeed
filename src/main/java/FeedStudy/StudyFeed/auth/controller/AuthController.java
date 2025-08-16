@@ -39,9 +39,9 @@ public class AuthController {
 
     @PostMapping("/signup")
     @Operation(summary = "회원가입", description = "최종적으로 회원가입을 마무리 하는 곳입니다.")
-    public ResponseEntity<String> signup(@Valid @RequestBody SignUpRequestDto req) {
-        authService.signUp(req);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<?> signup(@Valid @RequestBody SignUpRequestDto req) {
+        Map<String, String> stringStringMap = authService.signUp(req);
+        return ResponseEntity.ok(stringStringMap);
     }
 
     @PostMapping("/signin")

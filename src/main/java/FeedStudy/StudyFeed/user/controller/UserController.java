@@ -132,14 +132,13 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
-    @Operation(summary = "Access Token 유효성 검사")
-    @PostMapping("/check")
-//    @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> checkAccessToken(
-            @Parameter(hidden = true) @AuthenticationPrincipal User user,
-            @RequestParam String data) {
-        String check = userService.checkAccessToken(data);
-        return ResponseEntity.ok().body(check);
+
+    @Operation(summary = "닉네임 확인 API")
+    @GetMapping("/check")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<Map<String, String>> checkNickname(
+            @Parameter(hidden = true) @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(userService.checkNickname(user));
     }
 
     @Operation(summary = "유저 자기소개 수정")

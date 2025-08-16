@@ -44,6 +44,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -395,8 +396,8 @@ public class UserService {
     }
 
 
-    public String checkAccessToken(String data) {
-
-        return data + "okay token";
+    public Map<String, String> checkNickname(User user) {
+        String nickname = (user.getNickName() != null) ? user.getNickName() : "";
+        return Map.of("nickname", nickname);
     }
 }
