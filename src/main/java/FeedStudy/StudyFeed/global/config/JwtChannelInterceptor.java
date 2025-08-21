@@ -1,7 +1,6 @@
 package FeedStudy.StudyFeed.global.config;
 
 import FeedStudy.StudyFeed.global.jwt.JwtUtil;
-import FeedStudy.StudyFeed.global.jwt.UserPrincipal;
 import FeedStudy.StudyFeed.squad.util.ChatTokenProvider;
 import FeedStudy.StudyFeed.user.repository.UserRepository;
 import io.jsonwebtoken.Claims;
@@ -37,13 +36,10 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
 
                    userRepository.findById(userId).ifPresent(user -> {
 
-                       var userPrincipal = new UserPrincipal(user); // 프로젝트에 맞게
-                       var auth = new UsernamePasswordAuthenticationToken(userPrincipal, null, user.getAuthorities());
-                       accessor.setUser(auth);
-//                       UsernamePasswordAuthenticationToken authenticationToken =
-//                               new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                       UsernamePasswordAuthenticationToken authenticationToken =
+                               new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
 
-//                       accessor.setUser(authenticationToken);
+                       accessor.setUser(authenticationToken);
                    });
                } catch (Exception e) {
                    System.out.println("인증실패: " + e.getMessage());
@@ -52,5 +48,5 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
             }
         }
         return message;
-    }
+    } // todo openchat도 가능하게 만들기
 }

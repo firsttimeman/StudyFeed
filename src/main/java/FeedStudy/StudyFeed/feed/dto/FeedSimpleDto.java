@@ -16,15 +16,15 @@ import java.util.List;
 public class FeedSimpleDto {
     private Long id;
     private String nickname;
-    private String profileImageUrl;
+    private String profileUrl;
     private String category;
     private String content;
-    private List<String> images;
+    private List<String> imageList;
     private boolean like;
     private Integer likeCount;
     private Integer commentCount;
-    private Boolean isMine;
-    private String datetime;
+    private Boolean mine;
+    private String regDt;
 
     public static FeedSimpleDto toDto(Feed feed, Long userId, boolean isLike) {
         Long id = feed.getId();

@@ -5,16 +5,12 @@ import FeedStudy.StudyFeed.global.exception.exceptiontype.MailException;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-@Log4j2
-//@EnableRetry
 public class MailService {
     private final JavaMailSender mailSender;
     private static final String SENDER_EMAIL = "sangwha0@gmail.com";
@@ -39,21 +35,12 @@ public class MailService {
         return mimeMessage;
     }
 
-    @Async("ioExecutor")
-//    @Retryable(
-//            value = { MessagingException.class, MailException.class },
-//            maxAttempts = 3, // 최대 3번 시도
-//            backoff = @Backoff(delay = 1000, multiplier = 2) // 1초 -> 2초 -> 4초 간격
-//    )
     public void sendVerifyMail(String email, String authCode) {
         try {
             MimeMessage mail = createMail(email, authCode);
             mailSender.send(mail);
-            log.info("Verification mail sent to {}", email);
         } catch (MessagingException e) {
-            log.error("Failed to send verification mail to {}", email, e);
             throw new MailException(ErrorCode.MAIL_SEND_FAILED);
-
         }
     }
 

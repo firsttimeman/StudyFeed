@@ -68,6 +68,7 @@ public class GlobalExceptionHandler {
 
     @Getter
     @Setter
+    // 위치도 넣으면 좋다
     public static class ErrorResponse {
         private final String errorCode;
         private final String errorMessage;

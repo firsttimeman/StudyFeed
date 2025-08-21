@@ -29,21 +29,14 @@ public class SignUpRequestDto {
     @Schema(description = "성별")
     private String gender;
 
-
     @Past(message = "과거 날짜여야 합니다.")
     @Schema(description = "생년월일")
-    private LocalDate birthDate;
+    private LocalDate birth;
 
     @Schema(description = "이벤트 수신 여부")
     private String receiveEvent;
 
     @Schema(description = "이메일 인증 암호")
     private String authcode;
-
-
-
-
-
-
 
 }

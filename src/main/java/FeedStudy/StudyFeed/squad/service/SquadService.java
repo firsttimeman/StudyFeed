@@ -87,8 +87,8 @@
             }
 
             validateOwner(user, squad);
-            validateAgeRange(squad, req);
-            validateGender(squad, req);
+            validateAgeRange(squad, req); // todo n+1 멤버수 만큼 발생
+            validateGender(squad, req); // Todo  멤버 수만큼 LAZY 로딩 → N+1
             validateMemberCount(squad, req);
 
             squad.update(req);
@@ -114,6 +114,8 @@
             List<SquadSimpleDto> squadDtos = squads.getContent().stream().map(SquadSimpleDto::toDto).toList();
             return new DataResponse(squadDtos, squads.hasNext());
 
+
+
         }
 
         public Map<String, String> joinOrGetChatToken(User user, Long squadId) {
@@ -135,6 +137,16 @@
             }
 
             joinSquad(user, squad);
+
+            //todo n+1 발생 가능
+//            여기서 N+1 발생함
+//            핵심은 squad.getMembers()를 순회하면서 각 멤버의 m.getUser()(ManyToOne LAZY)를 접근하는 부분입니다.
+//                    findByIdWithParticipants가 멤버 컬렉션을 fetch join 했더라도, 멤버→유저(member.user)까지 fetch join 했다는 보장은 없습니다.
+//            그래서 위의 두 줄:
+//	•	m.getUser().getId()
+//	•	map(m -> m.getUser())
+//            가 멤버 수만큼 추가 SELECT를 유발 → 전형적인 N+1.
+//	•	추가로, 내부에서 호출하는 joinSquad(user, squad)도 N+1 가능
 
             if(squad.getJoinType() == JoinType.DIRECT) {
                 List<String> fcmTokens = squad.getMembers().stream()
@@ -174,8 +186,18 @@
 
         public DataResponse homeSquad(User user, Pageable pageable, SquadFilterRequest req) {
             List<User> excludedUser = new ArrayList<>();
+
+
+
             if (user != null) {
-                excludedUser = getExcludedUsers(user);
+                excludedUser = getExcludedUsers(user); //todo n+1 발생 가능
+
+                //	•	내부에서 보통 아래 형태:
+                //	•	blockRepository.findByBlocker(user).stream().map(b -> b.getBlocked())
+                //	•	blockRepository.findByBlocked(user).stream().map(b -> b.getBlocker())
+                //	•	Block.blocked, Block.blocker가 @ManyToOne(fetch = LAZY)면 블록 레코드 개수만큼 추가 SELECT → N+1.
+                //
+                //즉, homeSquad 자체의 리스트/DTO는 안전하지만, 차단/차단당함 목록을 만드는 단계에서 N+1이 발생합니다
             }
             Page<Squad> squads;
 
@@ -185,16 +207,22 @@
                 squads = squadRepository.findFilteredSquads(req.getCategory(), req.getRegionMain(),
                         req.getRegionSub(), req.isRecruitingOnly(), sevenDaysAgo, pageable);
 
+
             } else {
                 squads = squadRepository.findFilteredSquadsWithExclusion(req.getCategory(), req.getRegionMain(),
                         req.getRegionSub(), req.isRecruitingOnly(), excludedUser, sevenDaysAgo, pageable);
+
             }
             return new DataResponse(squads.getContent().stream().map(SquadSimpleDto::toDto).toList(), squads.hasNext());
         }
 
         public SquadDetailDto detail(User user, long squadId) {
             Squad squad = findSquad(squadId);
-            return SquadDetailDto.toDto(user, squad);
+            return SquadDetailDto.toDto(user, squad); //todo n+1 발생 가능
+            //	•	squad.getMembers()는 컬렉션 한 번 로딩(SELECT 1)
+            //	•	하지만 각 멤버의 m.getUser()(ManyToOne LAZY)를 멤버 수만큼 접근 → N+1
+            //	•	UserSimpleDto.toDto(User) 자체는 안전(이미 받은 User의 단순 필드만 읽음)
+
         }
 
         public List<UserSimpleDto> getParticipants(User user, Long squadId) {
@@ -209,7 +237,7 @@
             }
             return squad.getMembers().stream()
                     .filter(member -> member.getAttendanceStatus() == AttendanceStatus.PENDING)
-                    .map(members -> UserSimpleDto.toDto(members.getUser()))
+                    .map(members -> UserSimpleDto.toDto(members.getUser())) //todo n+1 발생 가능
                     .collect(Collectors.toList());
         }
 
@@ -223,8 +251,8 @@
         }
 
 
-        public void joinSquad(User user, Squad squad) {
-            validateAlreadyJoined(user, squad);
+        private void joinSquad(User user, Squad squad) {
+            validateAlreadyJoined(user, squad); // todo squad.getMembers().stream().anyMatch(m -> m.getUser().equals(user)); // ★ m.getUser() LAZY 반복 → N+1
             validateIsClosed(squad);
             validateTimePassed(squad);
             validateFullJoined(squad);
@@ -257,7 +285,7 @@
             }
 
             SquadMember squadMember = squad.getMembers().stream()
-                    .filter(m -> m.getUser().equals(members))
+                    .filter(m -> m.getUser().equals(members)) // todo n+1 발생 가능
                     .findAny().orElseThrow(() -> new SquadException(ErrorCode.SQUAD_MEMBER_NOT_FOUND));
 
             if(squadMember.getAttendanceStatus() == AttendanceStatus.PENDING) {
@@ -278,8 +306,8 @@
 
             List<String> fcmTokens = squad.getMembers().stream()
                     .filter(m -> m.getAttendanceStatus() == AttendanceStatus.JOINED)
-                    .filter(m -> !m.getUser().getId().equals(members.getId()))
-                    .map(m -> m.getUser())
+                    .filter(m -> !m.getUser().getId().equals(members.getId())) // todo n+1 발생 가능
+                    .map(m -> m.getUser()) // Todo n+1 발생가능
                     .filter(u -> Boolean.TRUE.equals(u.getSquadChatAlarm()))
                     .map(u -> u.getFcmToken())
                     .filter(Objects::nonNull)
@@ -300,7 +328,7 @@
                 throw new SquadException(ErrorCode.NOT_SQUAD_OWNER);
             }
             SquadMember squadMember = squad.getMembers().stream()
-                    .filter(m -> m.getUser().equals(members))
+                    .filter(m -> m.getUser().equals(members)) // Todo n+1 발생가능
                     .findAny().orElseThrow(() -> new SquadException(ErrorCode.SQUAD_MEMBER_NOT_FOUND));
             squadMember.setAttendanceStatus(AttendanceStatus.REJECTED);
             squadMemberRepository.save(squadMember);
@@ -320,7 +348,8 @@
                 throw new SquadException(ErrorCode.NOT_SQUAD_OWNER);
             }
 
-            SquadMember participant = squad.getMembers().stream().filter(m -> m.getUser() == members)
+            SquadMember participant = squad.getMembers().stream()
+                    .filter(m -> m.getUser() == members) //todo n+1 발생
                     .findAny().orElseThrow(() -> new SquadException(ErrorCode.SQUAD_MEMBER_NOT_FOUND));
             participant.setAttendanceStatus(AttendanceStatus.KICKED_OUT);
             squad.decreaseCurrentCount();
@@ -336,7 +365,7 @@
             Squad squad = findSquad(squadId);
 
             SquadMember squadMember = squad.getMembers().stream()
-                    .filter(m -> m.getUser().getId() == user.getId())
+                    .filter(m -> m.getUser().getId() == user.getId()) //todo n+1 발생
                     .findAny().orElseThrow();
             squad.getMembers().remove(squadMember);
             squadMemberRepository.delete(squadMember);
@@ -347,7 +376,7 @@
             Squad squad = findSquad(squadId);
 
             boolean isMember = squad.getMembers().stream()
-                    .anyMatch(member -> member.getUser().getId().equals(user.getId()));
+                    .anyMatch(member -> member.getUser().getId().equals(user.getId())); //todo n+1 발생
 
             if(!isMember) {
                 throw new SquadException(ErrorCode.SQUAD_MEMBER_NOT_FOUND);
@@ -403,6 +432,7 @@
 
             blockedUsers.addAll(blockedByUsers);
             return blockedUsers.stream().distinct().toList();
+
 
         }
 

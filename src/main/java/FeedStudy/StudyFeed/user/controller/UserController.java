@@ -29,49 +29,50 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
-//
-//    @PostMapping("/signup")
-//    public ResponseEntity<String> register(@Valid @RequestParam String email) throws MessagingException {
-//        userService.RegisterUser(email);
-//        return ResponseEntity.ok("이메일이 보내졌습니다 이메일을 통해 인증을 완료하세요");
-//    }
-//
-//
-//
-//
-//    @PostMapping("/approve")
-//    public ResponseEntity<String> approve(@Valid @RequestBody SignUpRequestDto request) {
-//        userService.activateUser(request);
-//        return ResponseEntity.ok("회원 가입이 완료되었습니다.");
-//    }
-//
-//
-//    @PostMapping("/signin")
-//    public ResponseEntity<?> login(@Valid @RequestParam String email, String snsType, String snsId) {
-//        Map<String, String> tokens = userService.login(email, snsType, snsId);
-//        return ResponseEntity.ok()
-//                .body(tokens);
-//    }
-//
-//    @PostMapping("/testlogout")
-//    public ResponseEntity<?> logout(@RequestHeader( value = "Authorization", required = false) String token) {
-//
-//        log.info("로그아웃 요청 받음: {}", token);
-//
-//        userService.logout(token);
-//
-//        Map<String, String> response = new HashMap<>();
-//        response.put("message", "로그아웃 되었습니다.");
-//
-//        log.info("로그아웃 응답 바디: {}", response);
-//
-//        return ResponseEntity.ok()
-//                .contentType(MediaType.APPLICATION_JSON)
-//                .body(response);
-//    }
-
-
-
+    //
+    // @PostMapping("/signup")
+    // public ResponseEntity<String> register(@Valid @RequestParam String email)
+    // throws MessagingException {
+    // userService.RegisterUser(email);
+    // return ResponseEntity.ok("이메일이 보내졌습니다 이메일을 통해 인증을 완료하세요");
+    // }
+    //
+    //
+    //
+    //
+    // @PostMapping("/approve")
+    // public ResponseEntity<String> approve(@Valid @RequestBody SignUpRequestDto
+    // request) {
+    // userService.activateUser(request);
+    // return ResponseEntity.ok("회원 가입이 완료되었습니다.");
+    // }
+    //
+    //
+    // @PostMapping("/signin")
+    // public ResponseEntity<?> login(@Valid @RequestParam String email, String
+    // snsType, String snsId) {
+    // Map<String, String> tokens = userService.login(email, snsType, snsId);
+    // return ResponseEntity.ok()
+    // .body(tokens);
+    // }
+    //
+    // @PostMapping("/testlogout")
+    // public ResponseEntity<?> logout(@RequestHeader( value = "Authorization",
+    // required = false) String token) {
+    //
+    // log.info("로그아웃 요청 받음: {}", token);
+    //
+    // userService.logout(token);
+    //
+    // Map<String, String> response = new HashMap<>();
+    // response.put("message", "로그아웃 되었습니다.");
+    //
+    // log.info("로그아웃 응답 바디: {}", response);
+    //
+    // return ResponseEntity.ok()
+    // .contentType(MediaType.APPLICATION_JSON)
+    // .body(response);
+    // }
 
     @Operation(summary = "랜덤 닉네임 생성")
     @GetMapping("/generate_nickname")
@@ -132,13 +133,12 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
-
-    @Operation(summary = "닉네임 확인 API")
+    @Operation(summary = "Access Token 유효성 검사")
     @GetMapping("/check")
-    @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<Map<String, String>> checkNickname(
+    // @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<?> checkAccessToken(
             @Parameter(hidden = true) @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(userService.checkNickname(user));
+        return ResponseEntity.ok().body(userService.getNickname(user));
     }
 
     @Operation(summary = "유저 자기소개 수정")

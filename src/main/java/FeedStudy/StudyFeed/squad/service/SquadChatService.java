@@ -43,7 +43,7 @@ public class SquadChatService {
 
         SquadChat squadChat = SquadChat.text(user, squad, message);
 
-        sendChatPushToOtherMembers(squad, user, message);
+        sendChatPushToOtherMembers(squad, user, message); // todo n+1 발생
 
         return squadChatRepository.save(squadChat);
 
@@ -64,7 +64,7 @@ public class SquadChatService {
 
         SquadChat chat = SquadChat.image(user, squad, images);
 
-        sendImagePushToOtherMembers(squad, user);
+        sendImagePushToOtherMembers(squad, user);  // todo n+1 발생
         return squadChatRepository.save(chat);
     }
 
@@ -76,7 +76,7 @@ public class SquadChatService {
         List<String> fcmTokens = squad.getMembers().stream()
                 .filter(m -> m.getAttendanceStatus() == AttendanceStatus.JOINED)
                 .filter(m -> !m.getUser().getId().equals(sender.getId()))
-                .map(m -> m.getUser())
+                .map(m -> m.getUser())   // todo n+1 발생
                 .filter(u -> Boolean.TRUE.equals(u.getSquadChatAlarm()))
                 .map(u -> u.getFcmToken())
                 .filter(obj -> Objects.nonNull(obj))
@@ -156,13 +156,18 @@ public class SquadChatService {
 
     public List<SquadChat> loadRecentMessages(Long squadId) {
 
-        return squadChatRepository.findLatestChats(squadId, PageRequest.of(0, 20));
+        return squadChatRepository.findLatestChats(squadId, PageRequest.of(0, 20)); // todo n+1 발생 할수도 있음 확실X
     }
 
 
     public List<SquadChat> loadPreviousMessages(Long squadId, Long lastId) {
-        return squadChatRepository.findPreviousChats(squadId, lastId, PageRequest.of(0, 20));
+        return squadChatRepository.findPreviousChats(squadId, lastId, PageRequest.of(0, 20)); // todo n+1 발생 할수도 있음 확실X
     }
+
+    //	•	위 JPQL은 SquadChat만 조회하고, c.user(ManyToOne, LAZY), c.images(OneToMany, LAZY)는 안 끌어옵니다.
+    //	•	따라서 서비스/컨트롤러/DTO 매핑에서 결과 리스트를 순회하며
+    //	•	chat.getUser() 접근 → 채팅 건수만큼 User 추가 SELECT
+    //	•	chat.getImages() 접근 → 채팅 건수만큼 Images 추가 SELECT
 
     private void insertDateMessageIfNeededSquad(Squad squad) {
 
@@ -197,7 +202,7 @@ public class SquadChatService {
         List<String> fcmTokens = squad.getMembers().stream()
                 .filter(m -> m.getAttendanceStatus() == AttendanceStatus.JOINED)
                 .filter(m -> !m.getUser().getId().equals(sender.getId()))
-                .map(m -> m.getUser())
+                .map(m -> m.getUser()) // todo n+1 발생 가능
                 .filter(u -> Boolean.TRUE.equals(u.getSquadChatAlarm()))
                 .map(u -> u.getFcmToken())
                 .filter(obj -> Objects.nonNull(obj))

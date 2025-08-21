@@ -68,7 +68,8 @@ public class FeedService {
         Feed feed = feedRepository.findByIdWithComments(feedId)
                 .orElseThrow(() -> new FeedException(ErrorCode.FEED_NOT_FOUND));
         boolean isLike = feedLikeRepository.existsByUserAndFeed(user, feed);
-        return FeedDetailResponse.toDto(feed, user.getId(), isLike);
+        return FeedDetailResponse.toDto(feed, user.getId(), isLike); //todo  떄문에 N+1 문제 발생
+        //댓글 dto에서 사용자/대댓글 접근 문제 때문에 N+1문제 발생
     }
 
 
@@ -76,9 +77,9 @@ public class FeedService {
         Page<FeedComment> page = feedCommentRepository.findByParentComment_Id(parentId, pageable);
         boolean hasNext = page.hasNext();
         List<FeedCommentDto> replies = page.getContent().stream()
-                .map(reply -> FeedCommentDto.toDto(reply, user.getId()))
+                .map(reply -> FeedCommentDto.toDto(reply, user.getId())) // todo n+1 발생 가능
                 .toList();
-
+        //댓글·대댓글·작성자 지연로딩 연쇄 N+1.
 
         return new FeedRepliesDto(hasNext, replies);
     }
@@ -112,7 +113,7 @@ public class FeedService {
         List<FeedImage> images = feedImageRepository.findByFeed(feed);
         images.forEach(image -> {
             s3FileService.delete(image.getImageUrl());
-            feedImageRepository.delete(image);
+            feedImageRepository.delete(image); // todo n+1 문제가 안생긴다고는 하는데 의심이 됨
         });
         feedRepository.delete(feed);
 
@@ -155,13 +156,24 @@ public class FeedService {
                 .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
         Page<Feed> feeds = feedRepository.findByUser(user, pageable);
         List<FeedSimpleDto> feedDtos = feeds.getContent().stream()
-                .map(f -> FeedSimpleDto.toDto(f, userId, hasFeedLike(user, f))).toList();
+                .map(f -> FeedSimpleDto.toDto(f, userId, hasFeedLike(user, f))).toList(); // todo N + 1 문제 예상
+        //f.getUser().getNickName();   // Feed.user LAZY → 피드마다 1회
+        //f.getUser().getImageUrl();   // (동일 User 로딩 후엔 추가 쿼리 없음)
+        //f.getImages()...             // Feed.images LAZY 컬렉션 → 피드마다 1회
+        // // existsByUserAndFeed(user, f)
+        //→ 피드마다 EXISTS 쿼리 1회 추가.
+        //결국 메인 1 + (User N) + (Images N) + (LikeExists N) = 1 + 3N 수준의 쿼리로 불어납니다.
+        //(실제 수치는 캐시/동일 사용자 겹침 등에 따라 약간 달라질 수 있지만 패턴은 위와 같아요.)
+        // 이중 n+1 발생 가능
+
         return new FeedResponseDto(feeds.hasNext(), feedDtos);
 
     }
 
     public DataResponse getHomeFeeds(User user, Pageable pageable, String category) {
-        List<User> excludedUsers = getExcludedUsers(user);
+        List<User> excludedUsers = getExcludedUsers(user); // todo n+1 발생 가능
+        //	•	Block.blocked, Block.blocker가 LAZY면 블록 레코드 수만큼 추가 SELECT → N+1(α)
+
         Page<Feed> feeds;
         if (!excludedUsers.isEmpty()) {
             feeds = category.equals("전체")
@@ -174,6 +186,13 @@ public class FeedService {
         }
         boolean hasNext = feeds.hasNext();
         List<FeedSimpleDto> feedDtos = feeds.getContent().stream().map(f -> FeedSimpleDto.toDto(f, user.getId(), hasFeedLike(user, f))).toList();
+        // 여기서 n+1 발생 피드마다 존재여부 확인 toDto로 또 한번의 n+1 발생
+        //	•	FeedSimpleDto.toDto 안에서:
+        //	•	f.getUser().getNickName()/getImageUrl → Feed.user LAZY 피드마다 1회
+        //	•	f.getImages() → Feed.images 컬렉션 LAZY 피드마다 1회
+        //→ N+1
+        //	•	hasFeedLike(user, f):
+        //	•	existsByUserAndFeed를 피드마다 1회 → 또 N+1
         return new DataResponse(feedDtos, hasNext);
     }
 
@@ -184,7 +203,20 @@ public class FeedService {
                 .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
         Page<Feed> feeds = feedRepository.findByUser(other, pageable);
         List<FeedSimpleDto> feedDtos = feeds.getContent().stream()
-                .map(f -> FeedSimpleDto.toDto(f, userId, hasFeedLike(user, f))).toList();
+                .map(f -> FeedSimpleDto.toDto(f, userId, hasFeedLike(user, f)))
+                .toList();//todo n+1 발생
+
+        //1.	DTO 변환 중 LAZY 접근 (N+1)
+        //	•	FeedSimpleDto.toDto 내부에서
+        //	•	f.getUser().getNickName()/getImageUrl → Feed.user LAZY → 피드마다 추가 SELECT
+        //	•	f.getImages() → Feed.images LAZY 컬렉션 → 피드마다 추가 SELECT
+        //	2.	피드별 좋아요 존재 조회 (N+1)
+        //	•	hasFeedLike(user, f) → existsByUserAndFeed(user, f)를 피드마다 1회 실행
+        //
+        //즉, 메인 페이징 쿼리(+count) 이후에
+        //	•	작성자 로딩 N회 + 이미지 로딩 N회 + 좋아요 존재 확인 N회가 더해져 이중 N+1 패턴이 됩니다.
+        //
+        //위쪽의 userRepository.findById(...) 두 번은 단건 조회라 N+1과 무관합니다.
 
         return new DataResponse(feedDtos, feeds.hasNext());
 
@@ -299,7 +331,7 @@ public class FeedService {
     }
 
 
-    public void createFeedLike(Feed feed, User user)  {
+    private void createFeedLike(Feed feed, User user)  {
         FeedLike feedLike = new FeedLike(user, feed);
         feedLikeRepository.save(feedLike);
         String fcmToken = feed.getUser().getFcmToken();
@@ -312,7 +344,7 @@ public class FeedService {
         firebaseMessagingService.sendCommentNotification(isAlarm, fcmToken, title, content, data);
     }
 
-    public void decreaseFeedLike(Feed feed, User user) {
+    private void decreaseFeedLike(Feed feed, User user) {
         FeedLike feedLike = feedLikeRepository.findByFeedAndUser(feed, user).orElseThrow(null);
         feedLikeRepository.delete(feedLike);
     }
@@ -350,6 +382,7 @@ public class FeedService {
         firebaseMessagingService.sendCommentNotification(isAlarm, fcmToken, pushTitle, pushContent, data);
     }
 
+    @Transactional
     public void deleteComment(Long userId, Long commentId) {
         FeedComment comment = feedCommentRepository.findById(commentId)
                 .orElseThrow(() -> new FeedException(ErrorCode.COMMENT_NOT_FOUND));
@@ -367,6 +400,14 @@ public class FeedService {
             feedCommentRepository.delete(child);
         }
     }
+
+    /*
+    •	DTO들
+	•	feed/dto/FeedSimpleDto : feed.getUser().getNickName(), feed.getImages()...
+	•	feed/dto/FeedDetailResponse : feed.getImages(), feed.getComments()...
+	•	feed/dto/FeedCommentDto : comment.getChildComments(), comment.getUser()
+→ 목록/상세 전반에서 지연로딩 접근.
+     */
 }
 
 

@@ -155,14 +155,20 @@ public class ChatService {
 
         ChatMessage text = ChatMessage.createText(user, chatRoom, content);
 
-        sendOpenChatPushToOtherMembers(chatRoom, user, content);
+        sendOpenChatPushToOtherMembers(chatRoom, user, content); // todo n+1 발생 가능
 
         return chatMessageRepository.save(text);
     }
 
     public ChatMessage sendImageMessage(Long roomId, Long userId, List<String> imageUrls) {
-        ChatRoom chatRoom = getChatRoom(roomId);
-        User user = getUser(userId);
+        ChatRoom chatRoom = getChatRoom(roomId);//todo n+1
+        User user = getUser(userId); //todo n+1
+        //	•	① getChatRoom(roomId)
+        //→ 내부에서 chatRoomRepository.findById(...) 같이 단일 조회만 하면 N+1 아님.
+        //→ 단, chatRoom.getUsers() 같은 Lazy 연관관계 컬렉션을 순회하면 N+1 발생.
+
+        //	•	② getUser(userId)
+        //→ 단일 조회면 문제 없음. 역시 연관된 엔티티(Lazy) 접근할 때만 N+1.
 
         insertDateMessageIfNeededChat(chatRoom);
 
@@ -172,7 +178,10 @@ public class ChatService {
 
         ChatMessage image = ChatMessage.image(user, chatRoom, images);
 
-        sendImagePushOpenChatToOtherMembers(chatRoom, user);
+        sendImagePushOpenChatToOtherMembers(chatRoom, user); //todo n+1
+        //	•	③ sendImagePushOpenChatToOtherMembers(chatRoom, user)
+        //→ 여기서 chatRoom.getChatRoomUsers() 같은 컬렉션을 돌면서 각 User에 접근한다면 N+1 가능성이 큼.
+        //→ @OneToMany(fetch = LAZY) 기본값일 테니까요.
 
         return chatMessageRepository.save(image);
     }
@@ -238,6 +247,7 @@ public class ChatService {
 
     public List<ChatMessage> loadRecentMessages(Long roomId, Pageable pageable) {
         return chatMessageRepository.findLatestMessages(roomId, pageable);
+
     }
 
     public List<ChatMessage> loadPreviousMessages(Long roomId, Long lastMessageId, Pageable pageable) {
@@ -245,7 +255,7 @@ public class ChatService {
     }
 
 
-    public void insertDateMessageIfNeededChat(ChatRoom room) {
+    private void insertDateMessageIfNeededChat(ChatRoom room) {
 
         LocalDate today = LocalDate.now();
 
@@ -277,12 +287,15 @@ public class ChatService {
         String data = room.getId() + ",chat";
 
         List<String> fcmTokens = room.getUsers().stream()
-                .map(u -> u.getUser())
+                .map(u -> u.getUser()) //todo N+1 발생
                 .filter(u -> !u.getId().equals(sender.getId()))
                 .filter(u -> Boolean.TRUE.equals(u.getChatroomAlarm()))
                 .map(u -> u.getFcmToken())
                 .filter(token -> token != null && !token.isBlank())
                 .toList();
+
+        //여기서 room.getUsers()가 LAZY 컬렉션이면 사용자 수 M만큼 추가로 ChatRoomUser(컬렉션 초기화) +
+        // 각 ChatRoomUser.getUser() 접근 시 유저당 1쿼리가 연쇄적으로 나가서 전형적인 N+1이 됩니다.
 
         if (!fcmTokens.isEmpty()) {
             firebaseMessagingService.sendCommentNotificationToMany(true, fcmTokens, title, body, data);
@@ -295,8 +308,13 @@ public class ChatService {
         String body = sender.getNickName() + "님이 사진을 보냈어요 📸";
         String data = room.getId() + ",chat";
 
-        List<String> fcmTokens = room.getUsers().stream()
-                .map(ChatRoomUser::getUser)
+        List<String> fcmTokens = room.getUsers().stream()// todo 컬렉션 초기화 1회(ROOM_USER 목록 로딩)
+                .map(ChatRoomUser::getUser) // todo N+1 발생
+                //	•	ChatRoomUser.user도 보통 @ManyToOne(fetch = LAZY)라서, 스트림에 있는 각 ChatRoomUser마다 getUser() 접근 시 유저를 로드하는 쿼리가 N번 추가로 나갑니다.
+                //예(반복): select u from User u where u.id = :userId
+                //
+                //즉 패턴은 전형적인 N+1:
+                //	•	1 (컬렉션 로드) + N (각 원소에서 LAZY 연관 로드)
                 .filter(user -> !user.getId().equals(sender.getId()))
                 .filter(user -> Boolean.TRUE.equals(user.getChatroomAlarm()))
                 .map(User::getFcmToken)

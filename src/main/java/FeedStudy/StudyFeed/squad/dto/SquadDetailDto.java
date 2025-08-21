@@ -62,7 +62,7 @@ public class SquadDetailDto {
                 .anyMatch(member -> member.getAttendanceStatus() == AttendanceStatus.PENDING);
         List<UserSimpleDto> participants = squad.getMembers().stream()
                 .filter(member -> member.getAttendanceStatus() == AttendanceStatus.JOINED)
-                .map(m -> UserSimpleDto.toDto(m.getUser())).toList();
+                .map(m -> UserSimpleDto.toDto(m.getUser())).toList(); // todo n+1 발생 가능
         Long ownerId = squad.getUser().getId();
         String btnMsg;
         boolean btnEnabled = false;

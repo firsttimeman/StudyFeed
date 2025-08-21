@@ -29,7 +29,7 @@ public class FeedCommentDto {
 
     public static FeedCommentDto toDto(FeedComment comment, Long userId){
 
-        List<FeedCommentDto> allReplies = comment.getChildComments().stream()
+        List<FeedCommentDto> allReplies = comment.getChildComments().stream() // todo 여기서 n+1 문제 가능
                 .sorted(Comparator.comparing(BaseEntity::getCreatedAt))
                 .map(reply -> FeedCommentDto.toDto(reply, userId))
                 .toList();
@@ -38,8 +38,8 @@ public class FeedCommentDto {
 
         boolean isDeleted = comment.isDeleted();
         String content = isDeleted ? "작성자가 댓글을 삭제했습니다." : comment.getContent();
-        String nickName = isDeleted ? null : comment.getUser().getNickName();
-        String profileImageUrl = isDeleted ? null : comment.getUser().getImageUrl();
+        String nickName = isDeleted ? null : comment.getUser().getNickName(); // todo n+1 문제 가능
+        String profileImageUrl = isDeleted ? null : comment.getUser().getImageUrl();  // todo n+1 문제 가능
 
 
         return new FeedCommentDto(
@@ -48,7 +48,7 @@ public class FeedCommentDto {
                 profileImageUrl,
                 content,
                 comment.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
-                comment.getParentComment() != null ? comment.getParentComment().getId() : null,
+                comment.getParentComment() != null ? comment.getParentComment().getId() : null, //  // todo n+1 문제 가능
                 comment.getUser().getId().equals(userId),
                 repliesShow,
                 allReplies.size() > 2,

@@ -47,8 +47,15 @@ public class BlockService   {
 
     
     public List<BlockSimpleDto> blockList(User user) {
-        return blockRepository.findByBlocker(user).stream().map(block -> BlockSimpleDto.toDto(block.getBlocked())).toList();
+        return blockRepository.findByBlocker(user).stream()
+                .map(block -> BlockSimpleDto.toDto(block.getBlocked()))
+                .toList();
     }
+    // todo n+1 문제 발생
+    /*
+    	•	findByBlocker(user)가 List<Block>만 조회하고, Block.blocked가 @ManyToOne(fetch = LAZY)라면
+        .map(block -> block.getBlocked()) 시 차단 대상 유저를 항목마다 추가 조회해서 N+1이 됩니다.
+     */
 
 
 

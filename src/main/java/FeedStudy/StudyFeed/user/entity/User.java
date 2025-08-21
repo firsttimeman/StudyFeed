@@ -37,14 +37,11 @@ public class User extends BaseEntity {
 
     private String telecom;
 
-
-
     @Column(nullable = true)
     private String nickName;
 
     @Column(nullable = false)
     private LocalDate birthDate;
-
 
     @Column(nullable = true)
     private Boolean receiveEvent = false;
@@ -58,7 +55,6 @@ public class User extends BaseEntity {
     private Boolean chatroomAlarm = false;
     @Column(nullable = true)
     private Boolean squadNotifyAlarm = false;
-
 
     private int reportCount = 0;
 
@@ -80,21 +76,18 @@ public class User extends BaseEntity {
     @Column(nullable = true)
     private String description;
 
-
     public void increaseReportCount() {
         this.reportCount++;
     }
-
 
     public int getAge() {
         return Utils.calculateAge(birthDate);
     }
 
-
-
-//    public List<SimpleGrantedAuthority> getAuthorities() {
-//        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + this.userRole.name()));
-//    }
+    // public List<SimpleGrantedAuthority> getAuthorities() {
+    // return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" +
+    // this.userRole.name()));
+    // }
 
     public User(SignUpRequestDto req, String password, String imageUrl) {
         this.email = req.getEmail();
@@ -104,7 +97,7 @@ public class User extends BaseEntity {
         this.imageUrl = imageUrl;
         this.telecom = req.getTelecom();
         this.nickName = "";
-        this.birthDate = LocalDate.parse(req.getBirthDate().toString(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        this.birthDate = LocalDate.parse(req.getBirth().toString(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         this.gender = req.getGender();
         this.userRole = UserRole.USER;
         this.receiveEvent = req.getReceiveEvent().equals("Y");

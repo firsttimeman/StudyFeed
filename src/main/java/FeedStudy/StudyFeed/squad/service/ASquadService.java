@@ -50,7 +50,7 @@ public abstract class ASquadService {
         boolean hasInvalid = squad.getMembers().stream()
                 .filter(member -> member.getAttendanceStatus() == AttendanceStatus.JOINED
                                   && !member.getUser().getId().equals(squad.getUser().getId()))
-                .anyMatch(member -> isAgeValidate(minAge, maxAge, member.getUser().getAge()));
+                .anyMatch(member -> isAgeValidate(minAge, maxAge, member.getUser().getAge())); // todo n+1 멤버수 만큼 발생
         if (hasInvalid) {
             throw new SquadException(ErrorCode.SQUAD_AGE_CONFLICT);
         }
@@ -69,7 +69,7 @@ public abstract class ASquadService {
     }
 
     public void validateGender(Squad squad, SquadRequest req) {
-        boolean hasInvalid = squad.getMembers().stream()
+        boolean hasInvalid = squad.getMembers().stream() // todo  멤버 수만큼 LAZY 로딩 → N+1
                 .anyMatch(member -> isGenderValidate(member.getUser(), req.getGenderRequirement()));
         if (hasInvalid) {
             throw new SquadException(ErrorCode.SQUAD_GENDER_CONFLICT);
@@ -100,7 +100,7 @@ public abstract class ASquadService {
     }
 
     public void validateAlreadyJoined(User user, Squad squad) {
-        boolean alreadyJoined = squad.getMembers().stream()
+        boolean alreadyJoined = squad.getMembers().stream() // todo n+1 발생 가능
                 .anyMatch(member -> member.getUser().equals(user));
         if (alreadyJoined) {
             throw new SquadException(ErrorCode.ALREADY_JOINED);
