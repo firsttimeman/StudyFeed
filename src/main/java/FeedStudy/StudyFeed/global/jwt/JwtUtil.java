@@ -78,13 +78,14 @@ public class JwtUtil {
         return rsa.generatePrivate(spec);
     }
 
-    private String createJwt(String subject, String role, long expirationTime) {
+    private String createJwt(String subject, String role, long expirationTime, String tokenType) {
         Date now = new Date();
         Date expirationDate = new Date(now.getTime() + expirationTime);
 
         return Jwts.builder()
                 .setSubject(subject)
                 .claim("role", role)
+                .claim("token_type", tokenType)
                 .setIssuedAt(now)
                 .setExpiration(expirationDate)
                 .signWith(privateKey, SignatureAlgorithm.RS256)
@@ -92,11 +93,11 @@ public class JwtUtil {
     }
 
     public String createAccessToken(String email, String role) {
-        return createJwt(email, role, ACCESS_TOKEN_VALIDITY_SECONDS);
+        return createJwt(email, role, ACCESS_TOKEN_VALIDITY_SECONDS, "access");
     }
 
     public String createRefreshToken(String email, String role) {
-        return createJwt(email, role, REFRESH_TOKEN_VALIDITY_SECONDS);
+        return createJwt(email, role, REFRESH_TOKEN_VALIDITY_SECONDS, "refresh");
     }
 
     public Claims validateToken(String token) {

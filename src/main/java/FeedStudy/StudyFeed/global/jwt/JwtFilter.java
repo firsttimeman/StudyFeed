@@ -30,21 +30,28 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws IOException, ServletException {
+
+        if("/api/auth/refresh".equals(request.getRequestURI())) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         String header = request.getHeader("Authorization");
 
         try {
             if(header != null && header.startsWith("Bearer ")) {
                 String token = header.substring(7);
 
-                if(request.getRequestURI().equals("/api/auth/refresh")) {
-                    jwtUtil.validateToken(token);
-                    chain.doFilter(request, response);
-                }
-
 
                 Claims claims = jwtUtil.validateToken(token);
-                String username = claims.getSubject();
-                userRepository.findByEmail(username).ifPresent(user -> {
+                Object type = claims.get("token_type");
+                if(!"access".equals(type)) {
+                    chain.doFilter(request, response);
+                    return;
+                }
+
+                String email = claims.getSubject();
+                userRepository.findByEmail(email).ifPresent(user -> {
                     var authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 });
@@ -55,15 +62,6 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
 
-//        String email = jwtUtil.getClaimsFromToken(token).getSubject();
-////        UserPrincipal userPrincipal = (UserPrincipal) customUserDetailsService.loadUserByUsername(email);
-//        User user = userRepository.findByEmail(email)
-//                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을수 없습니다."));
-//
-//        UsernamePasswordAuthenticationToken authentication =
-//                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-//        SecurityContextHolder.getContext().setAuthentication(authentication);
-//
         chain.doFilter(request, response);
 
     }

@@ -1,10 +1,7 @@
 package FeedStudy.StudyFeed.squad.entity;
 
 import FeedStudy.StudyFeed.global.entity.BaseEntity;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -13,6 +10,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
+@Table(name = "squad_chat_image")
 public class SquadChatImage extends BaseEntity {
 
     private String uniqueName; //UUID.jpg
@@ -22,7 +20,7 @@ public class SquadChatImage extends BaseEntity {
     private String url; //  https://s3.aws.com/abc/cat.png
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "squadchat_id")
+    @JoinColumn(name = "squad_chat_id")
     private SquadChat squadChat;
 
     public SquadChatImage(String uniqueName, String originName, String url) {

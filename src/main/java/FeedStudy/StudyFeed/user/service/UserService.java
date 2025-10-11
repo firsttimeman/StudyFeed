@@ -1,6 +1,5 @@
 package FeedStudy.StudyFeed.user.service;
 
-import FeedStudy.StudyFeed.auth.service.AuthCodeService;
 import FeedStudy.StudyFeed.feed.entity.Feed;
 import FeedStudy.StudyFeed.feed.entity.FeedComment;
 import FeedStudy.StudyFeed.feed.entity.FeedImage;
@@ -10,7 +9,6 @@ import FeedStudy.StudyFeed.feed.repository.FeedLikeRepository;
 import FeedStudy.StudyFeed.feed.repository.FeedRepository;
 import FeedStudy.StudyFeed.global.exception.ErrorCode;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.MemberException;
-import FeedStudy.StudyFeed.global.jwt.JwtUtil;
 import FeedStudy.StudyFeed.global.service.S3FileService;
 import FeedStudy.StudyFeed.global.utils.NickNameUtils;
 import FeedStudy.StudyFeed.openchat.entity.ChatImage;
@@ -28,25 +26,19 @@ import FeedStudy.StudyFeed.squad.repository.SquadChatRepository;
 import FeedStudy.StudyFeed.squad.repository.SquadMemberRepository;
 import FeedStudy.StudyFeed.squad.repository.SquadRepository;
 import FeedStudy.StudyFeed.user.dto.DescriptionRequestDto;
+import FeedStudy.StudyFeed.user.dto.NickNameCheckResponse;
 import FeedStudy.StudyFeed.user.dto.ProfileImageUpdateDto;
 import FeedStudy.StudyFeed.user.entity.User;
-import FeedStudy.StudyFeed.user.repository.BlackListRepository;
 import FeedStudy.StudyFeed.user.repository.RefreshRepository;
 import FeedStudy.StudyFeed.user.repository.UserRepository;
-import com.google.api.pathtemplate.ValidationException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * 1. 유저 회원가입
@@ -82,114 +74,7 @@ public class UserService {
     private final ChatRoomUserRepository chatRoomUserRepository;
     private final ChatMessageRepository chatMessageRepository;
 
-    // public void RegisterUser(String email) throws MessagingException {
-    //
-    // String authCode = authCodeService.generateAuthCode();
-    // authCodeService.saveAuthCode(email, authCode);
-    // mailService.sendVerifyMail(email, authCode);
-    //
-    // //1. 해당되는 이메일로 인증코드를 보낸다. 보내면서 레디스에서 코드를 저장한다.
-    // }
 
-    // public void activateUser(SignUpRequestDto signUpRequestDto) {
-    //
-    // String email = signUpRequestDto.getEmail();
-    // String authCode = signUpRequestDto.getAuthcode();
-    //
-    // if (authCodeService.checkAuthCode(email, authCode)) {
-    // throw new AuthCodeException(ErrorCode.AUTH_CODE_MISMATCH);
-    // }
-    //
-    // if (userRepository.existsByEmail(email)) {
-    // throw new MemberException(ErrorCode.EMAIL_ALREADY_EXISTS);
-    // }
-    //
-    // String encodedPassword =
-    // passwordEncoder.encode(signUpRequestDto.getProviderType() +
-    // signUpRequestDto.getProviderId());
-    //
-    // User newUser = User.builder()
-    // .email(email)
-    // .password(encodedPassword)
-    // .userRole(UserRole.USER)
-    // .providerType(signUpRequestDto.getProviderType())
-    // .providerId(signUpRequestDto.getProviderId())
-    // .telecom(signUpRequestDto.getTelecom())
-    // .gender(signUpRequestDto.getGender())
-    //// .nickName(signUpRequestDto.getNickName())
-    // .birthDate(signUpRequestDto.getBirthDate()) //
-    //
-    //
-    // userRepository.save(newUser);
-    // }
-    // // 1. 이메일과 코드를 가지고 와서 비교하면서 코드가 틀리면 예외 발생. 이메일이 이미 존재하는 이메일일시 예외 밣생
-    // // 2. 없으면 새로운 회원을 가입시킴
-    //
-    // public Map<String, String> login(String email, String snsType, String snsId)
-    // {
-    // User user = userRepository.findByEmail(email)
-    // .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
-    //
-    // if (!passwordEncoder.matches(snsType + snsId, user.getPassword())) {
-    // throw new MemberException(ErrorCode.PASSWORD_NOT_MATCH);
-    // }
-    //
-    // Authentication authentication = authenticationManager.authenticate(
-    // new UsernamePasswordAuthenticationToken(email, snsType + snsId)
-    // );
-    // SecurityContextHolder.getContext().setAuthentication(authentication);
-    //
-    // String role = user.getUserRole().name();
-    // String accessToken = jwtUtil.createAccessToken(user.getEmail(), role);
-    // String refreshToken = jwtUtil.createRefreshToken(user.getEmail(), role);
-    // refreshRepository.saveRefreshToken(user.getEmail(), refreshToken);
-    //
-    //
-    // Map<String, String> map = new HashMap<>();
-    // map.put("accessToken", accessToken);
-    // map.put("refreshToken", refreshToken);
-    // return map;
-    // }
-
-    // public void logout(String accessToken) {
-    //
-    // String token = accessToken.replace("Bearer ", ""); // Bearer 제거
-    //
-    //
-    // Claims claims;
-    // try {
-    // claims = jwtUtil.validateToken(token);
-    // } catch (Exception e) {
-    // throw new TokenException(ErrorCode.INVALID_ACCESS_TOKEN);
-    // }
-    //
-    // String email = claims.getSubject();
-    //
-    // log.info("✅ 삭제 전 refresh token 조회: {}",
-    // refreshRepository.findByEmail(email));
-    //
-    // refreshRepository.deleteRefreshToken(email);
-    //
-    // log.info("✅ 삭제 후 refresh token 조회: {}",
-    // refreshRepository.findByEmail(email));
-    //
-    //
-    // long tokenExpiration = jwtUtil.getTokenExpiration(token);
-    // System.out.println("🔴 토큰 만료 시간(ms): " + tokenExpiration);
-    //
-    // if (tokenExpiration > 0) {
-    // blackListRepository.addToBlackList(token, tokenExpiration);
-    // log.info("🛑 블랙리스트 추가 완료: {}", token);
-    // } else {
-    // log.warn("⚠ 블랙리스트에 추가되지 않음: 만료 시간이 0 이하");
-    // }
-    // }
-
-    @Transactional
-    public void fcmTokenRefresh(User user, String fcmToken) {
-        user.setFcmToken(fcmToken);
-        userRepository.save(user);
-    }
 
     public String makeNickName() {
 
@@ -207,72 +92,129 @@ public class UserService {
         userRepository.save(user);
     }
 
-    private String generateUniqueNickName() {
-        String nickname;
-        int attempt = 0;
-        do {
-            nickname = NickNameUtils.generateNickname();
-            attempt++;
-            if (attempt > 10) {
-                throw new MemberException(ErrorCode.NICKNAME_GENERATION_FAILED);
-            }
-        } while (userRepository.existsByNickName(nickname));
-        return nickname;
+    public NickNameCheckResponse checkNickname(String rawNickname) {
+       String normalized = rawNickname == null ? "" : rawNickname.trim().replaceAll("\\s{2,}", " ");
+
+       String regex = "^[a-zA-Z0-9가-힣\\s]{2,12}$";
+       if(!normalized.matches(regex)) {
+           return NickNameCheckResponse.builder()
+                   .valid(false)
+                   .available(false)
+                   .message("2~12자, 한글/영문/숫자/공백만 사용할 수 있어요.")
+                   .normalized(normalized)
+                   .build();
+       }
+
+       if(normalized.matches("^[0-9]+$")) {
+           return NickNameCheckResponse.builder()
+                   .valid(false).available(false)
+                   .message("숫자만으로는 닉네임을 만들 수 없어요.")
+                   .normalized(normalized)
+                   .build();
+
+       }
+
+        if (normalized.matches("^(.)\\1{3,}$")) {
+            return NickNameCheckResponse.builder()
+                    .valid(false).available(false)
+                    .message("같은 문자를 4번 이상 반복할 수 없어요.")
+                    .normalized(normalized)
+                    .build();
+        }
+
+        boolean exists = userRepository.existsByNickName(normalized);
+        if (exists) {
+            return NickNameCheckResponse.builder()
+                    .valid(true).available(false)
+                    .message("이미 사용 중인 닉네임이에요.")
+                    .normalized(normalized)
+                    .build();
+        }
+
+        return NickNameCheckResponse.builder()
+                .valid(true).available(true)
+                .message("사용 가능한 닉네임이에요!")
+                .normalized(normalized)
+                .build();
     }
 
-    public Boolean hasNickName(User user) {
+    public boolean hasNickName(User user) {
         return !(user.getNickName() == null || user.getNickName().equals(""));
     }
 
-    public String limitNickname(String nickname) {
-        String regex = "^[a-zA-Z0-9가-힣\\s]{2,8}$";
-        if (!nickname.matches(regex)) {
-            throw new ValidationException("올바르지 않은 형식의 이름입니다");
-        } else {
-            return "올바른 형식의 이름입니다";
-        }
-    }
-
-    public void changeProfile(String email, String providerType, String providerId, String password) {
-        User user = userRepository.findByEmail(email).orElseThrow();
-        String encode = passwordEncoder.encode(password);
-        user.setProviderType(providerType);
-        user.setProviderId(providerId);
-        user.setPassword(encode);
+    @Transactional
+    public void fcmTokenRefresh(User user, String fcmToken) {
+        user.setFcmToken(fcmToken);
         userRepository.save(user);
     }
 
+
+
+    public Map<String, String> getNickname(User user) {
+        Map<String, String> map = new HashMap<>();
+        map.put("nickname", user.getNickName() == null ? "" : user.getNickName());
+        return map;
+    }
+
+    @Transactional
     public User modifyDescription(DescriptionRequestDto dto, User user) {
         user.setDescription(dto.getDescription());
         return userRepository.save(user);
 
     }
 
+    @Transactional
     public User changeProfileImage(User user, ProfileImageUpdateDto dto) {
 
-        if (user.getImageUrl() != null && !user.getImageUrl().isBlank()) {
-            String filename = user.getImageUrl().substring(user.getImageUrl().lastIndexOf("/") + 1);
-            s3FileService.delete(filename);
-        }
+        final String DEFAULT_IMAGE = "avatar_placeholder.png";
+        final Set<String> ALLOWED = Set.of("image/jpeg", "image/png", "image/gif", "image/webp");
 
-        if (dto.isResetToDefault()) {
-            user.setImageUrl("avatar_placeholder.png");
+        String oldUrl = user.getImageUrl();
+
+        if(dto.isResetToDefault()) {
+            if(oldUrl != null && !oldUrl.isBlank() && !oldUrl.endsWith(DEFAULT_IMAGE)) {
+                String oldFileName = oldUrl.substring(oldUrl.lastIndexOf('/') + 1);
+                s3FileService.delete(oldFileName);
+            }
+            user.setImageUrl(DEFAULT_IMAGE);
             return userRepository.save(user);
         }
 
-        MultipartFile profileImage = dto.getProfileImage();
-        if (profileImage != null && !profileImage.isEmpty()) {
+        MultipartFile file = dto.getProfileImage();
+        if(file == null || file.isEmpty()) return user;
 
-            String originalFilename = profileImage.getOriginalFilename();
-
-            String uniqueName = UUID.randomUUID() + originalFilename.substring(originalFilename.lastIndexOf("."));
-            s3FileService.upload(profileImage, uniqueName);
-            String imageUrl = s3FileService.getFullUrl(uniqueName);
-            user.setImageUrl(imageUrl);
+        String contentType = file.getContentType();
+        if(contentType == null || !ALLOWED.contains(contentType.toLowerCase())) {
+            throw new IllegalArgumentException("JPEG/PNG/GIF/WEBP 형식의 이미지 파일만 업로드할 수 있어요.");
         }
-        return userRepository.save(user);
+
+        String original = file.getOriginalFilename();
+        String ext = (original != null && original.contains(".")) ?
+                original.substring(original.lastIndexOf('.')) : "";
+        String newFileName = UUID.randomUUID() + ext;
+
+
+
+        String newUrl = s3FileService.uploadAndReturnUrl(file, newFileName);
+        user.setImageUrl(newUrl);
+        User saved = userRepository.save(user);
+
+
+
+        if (oldUrl != null && !oldUrl.isBlank() && !oldUrl.endsWith(DEFAULT_IMAGE)) {
+            String oldFileName = oldUrl.substring(oldUrl.lastIndexOf('/') + 1);
+            try {
+                s3FileService.delete(oldFileName);
+            } catch (Exception e) {
+                log.warn("기존 이미지 삭제 실패: {}", oldFileName, e);
+            }
+        }
+
+        return saved;
+
     }
 
+    @Transactional
     public User toggleAllAlarm(User user, boolean enabled) {
 
         user.setFeedAlarm(enabled);
@@ -284,6 +226,7 @@ public class UserService {
 
     }
 
+    //todo 여기 설정 피드랑 스쿼드 다하고 나서 할것
     @Transactional
     public void deleteUser(User user) {
         if (!userRepository.existsById(user.getId())) {
@@ -379,9 +322,14 @@ public class UserService {
 
     }
 
-    public Map<String, String> getNickname(User user) {
-        Map<String, String> map = new HashMap<>();
-        map.put("nickname", user.getNickName() == null ? "" : user.getNickName());
-        return map;
+    private String generateUniqueNickName() {
+        for(int i = 0; i < 100; i++) {
+            String nickname = NickNameUtils.generateNickname();
+            if(!userRepository.existsByNickName(nickname)) {
+                return nickname;
+            }
+        }
+
+        throw new MemberException(ErrorCode.NICKNAME_ALREADY_EXISTS);
     }
 }

@@ -12,6 +12,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(name = "chat_room_user")
 public class ChatRoomUser  extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

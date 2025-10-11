@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 @Table(
+        name = "feed_like",
         uniqueConstraints = @UniqueConstraint(
                 columnNames = {"user_id", "feed_id"}))
 public class FeedLike extends BaseEntity {

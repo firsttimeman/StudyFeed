@@ -11,6 +11,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Table(
+        name = "user_block",
        uniqueConstraints = @UniqueConstraint(columnNames = {"blocker_id", "blocked_id"})
 )
 @NoArgsConstructor

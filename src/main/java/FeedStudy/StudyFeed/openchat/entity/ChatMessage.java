@@ -16,6 +16,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@Table(name = "chat_message")
 public class ChatMessage extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

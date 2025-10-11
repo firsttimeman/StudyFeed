@@ -2,12 +2,12 @@ package FeedStudy.StudyFeed.auth.controller;
 
 import FeedStudy.StudyFeed.auth.service.AuthService;
 import FeedStudy.StudyFeed.user.dto.CheckAuthCodeDto;
-import FeedStudy.StudyFeed.user.dto.SignUpRequestDto;
+import FeedStudy.StudyFeed.auth.dto.SignUpRequestDto;
 import FeedStudy.StudyFeed.user.entity.User;
-import FeedStudy.StudyFeed.user.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -69,9 +69,16 @@ public class AuthController {
 
     @PostMapping("/refresh")
     @Operation(summary = "Jwt Refresh 토큰을 재발급합니다", description = "Jwt Refresh 토큰을 재발급합니다")
-    public ResponseEntity<?> refresh(@AuthenticationPrincipal User user) {
-        String refreshToken = authService.refreshToken(user);
-        return ResponseEntity.ok(refreshToken);
+    public ResponseEntity<?> refresh(HttpServletRequest request) {
+
+        String bearer = request.getHeader("Authorization");
+        if(bearer == null || !bearer.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body("Refresh token missing");
+        }
+
+        String refreshToken = bearer.substring(7);
+        Map<String, String> tokens = authService.refreshToken(refreshToken);
+        return ResponseEntity.ok(tokens);
     }
 
 }

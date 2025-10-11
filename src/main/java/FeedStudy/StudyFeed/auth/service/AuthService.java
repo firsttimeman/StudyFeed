@@ -6,15 +6,13 @@ import FeedStudy.StudyFeed.global.exception.exceptiontype.MemberException;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.TokenException;
 import FeedStudy.StudyFeed.global.jwt.JwtUtil;
 import FeedStudy.StudyFeed.user.dto.CheckAuthCodeDto;
-import FeedStudy.StudyFeed.user.dto.SignUpRequestDto;
+import FeedStudy.StudyFeed.auth.dto.SignUpRequestDto;
 import FeedStudy.StudyFeed.user.entity.User;
 import FeedStudy.StudyFeed.user.repository.BlackListRepository;
 import FeedStudy.StudyFeed.user.repository.RefreshRepository;
 import FeedStudy.StudyFeed.user.repository.UserRepository;
 import FeedStudy.StudyFeed.user.service.MailService;
-import com.google.api.pathtemplate.ValidationException;
 import io.jsonwebtoken.Claims;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,7 +22,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.lang.reflect.Member;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -134,13 +131,33 @@ public class AuthService {
         userRepository.save(user);
     }
 
-    public String refreshToken(User user) {
+    public Map<String, String> refreshToken(String refreshToken) {
 
-        String refreshToken = jwtUtil.createRefreshToken(user.getEmail(), user.getUserRole().name());
+        Claims claims = jwtUtil.validateToken(refreshToken);
+        if(!"refresh".equals(claims.get("token_type"))) {
+            throw new TokenException(ErrorCode.INVALID_ACCESS_TOKEN);
+        }
 
-        refreshRepository.deleteRefreshToken(user.getEmail());
-        refreshRepository.saveRefreshToken(user.getEmail(), refreshToken);
-        return refreshToken;
+        String email = claims.getSubject();
+
+        String storedToken = refreshRepository.findByEmail(email);
+        if(storedToken == null || !storedToken.equals(refreshToken)) {
+            throw new TokenException(ErrorCode.INVALID_ACCESS_TOKEN);
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
+        String role = user.getUserRole().name();
+
+        String newAccessToken = jwtUtil.createAccessToken(email, role);
+        String newRefreshToken = jwtUtil.createRefreshToken(email, role);
+        refreshRepository.saveRefreshToken(email, newRefreshToken);
+        log.info("♻️ Refresh Token 갱신 완료: {}", email);
+
+        Map<String, String> result = new HashMap<>();
+        result.put("accessToken", newAccessToken);
+        result.put("refreshToken", newRefreshToken);
+        return result;
     }
 
 }

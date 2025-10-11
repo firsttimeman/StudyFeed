@@ -17,6 +17,7 @@ import java.util.UUID;
 @Entity
 @NoArgsConstructor
 @ToString
+@Table(name = "feed_image")
 public class FeedImage extends BaseEntity {
 
     private final static String supportedExtensions[] = {"jpg", "jpeg", "png", "gif"};

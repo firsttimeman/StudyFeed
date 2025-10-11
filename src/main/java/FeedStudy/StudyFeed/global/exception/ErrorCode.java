@@ -17,6 +17,7 @@ public enum ErrorCode {
 
     // 인증 / 토큰 / 키
     INVALID_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_ACCESS_TOKEN", "액세스 토큰이 존재하지 않습니다."),
+    INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "액세스 토큰이 존재하지 않습니다."),
     AUTH_CODE_MISMATCH(HttpStatus.UNAUTHORIZED, "AUTH_CODE_MISMATCH", "인증 번호가 맞지 않습니다."),
     KEY_NOT_EXIST(HttpStatus.NOT_FOUND, "KEY_NOT_EXIST", "키가 존재하지 않습니다"),
     KEY_LOAD_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "KEY_LOAD_ERROR", "키 로드중 오류가 생겼습니다."),

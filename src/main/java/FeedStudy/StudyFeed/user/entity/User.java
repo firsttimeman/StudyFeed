@@ -4,7 +4,7 @@ import FeedStudy.StudyFeed.global.entity.BaseEntity;
 import FeedStudy.StudyFeed.squad.entity.SquadMember;
 import FeedStudy.StudyFeed.global.type.UserRole;
 import FeedStudy.StudyFeed.global.utils.Utils;
-import FeedStudy.StudyFeed.user.dto.SignUpRequestDto;
+import FeedStudy.StudyFeed.auth.dto.SignUpRequestDto;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.*;
@@ -22,6 +22,7 @@ import java.util.List;
 @AllArgsConstructor
 @Getter
 @Setter
+@Table(name = "app_user")
 public class User extends BaseEntity {
 
     @Email

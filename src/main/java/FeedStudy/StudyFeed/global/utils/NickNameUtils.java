@@ -1,6 +1,7 @@
 package FeedStudy.StudyFeed.global.utils;
 
 import java.util.Random;
+import java.util.UUID;
 
 public class NickNameUtils {
     private static final String[] name1 = { "넉살좋은", "발랄한", "산뜻한", "아리따운", "적극적인", "착한", "훌륭한", "고요한",
@@ -30,7 +31,9 @@ public class NickNameUtils {
     public static String generateNickname() {
         String first = name1[random.nextInt(name1.length)];
         String second = name2[random.nextInt(name2.length)];
-        return first + " " + second;
+        String suffix = UUID.randomUUID().toString().substring(0, 4);
+
+        return first + " " + second + suffix;
     }
 
 }

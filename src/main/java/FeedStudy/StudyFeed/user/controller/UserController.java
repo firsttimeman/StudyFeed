@@ -1,24 +1,19 @@
 package FeedStudy.StudyFeed.user.controller;
 
-import FeedStudy.StudyFeed.user.dto.DescriptionRequestDto;
-import FeedStudy.StudyFeed.user.dto.ProfileImageUpdateDto;
-import FeedStudy.StudyFeed.user.dto.SignUpRequestDto;
+import FeedStudy.StudyFeed.user.dto.*;
 import FeedStudy.StudyFeed.user.entity.User;
 import FeedStudy.StudyFeed.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import jakarta.mail.MessagingException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @SecurityRequirement(name = "Bearer Authentication")
@@ -29,50 +24,7 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
-    //
-    // @PostMapping("/signup")
-    // public ResponseEntity<String> register(@Valid @RequestParam String email)
-    // throws MessagingException {
-    // userService.RegisterUser(email);
-    // return ResponseEntity.ok("이메일이 보내졌습니다 이메일을 통해 인증을 완료하세요");
-    // }
-    //
-    //
-    //
-    //
-    // @PostMapping("/approve")
-    // public ResponseEntity<String> approve(@Valid @RequestBody SignUpRequestDto
-    // request) {
-    // userService.activateUser(request);
-    // return ResponseEntity.ok("회원 가입이 완료되었습니다.");
-    // }
-    //
-    //
-    // @PostMapping("/signin")
-    // public ResponseEntity<?> login(@Valid @RequestParam String email, String
-    // snsType, String snsId) {
-    // Map<String, String> tokens = userService.login(email, snsType, snsId);
-    // return ResponseEntity.ok()
-    // .body(tokens);
-    // }
-    //
-    // @PostMapping("/testlogout")
-    // public ResponseEntity<?> logout(@RequestHeader( value = "Authorization",
-    // required = false) String token) {
-    //
-    // log.info("로그아웃 요청 받음: {}", token);
-    //
-    // userService.logout(token);
-    //
-    // Map<String, String> response = new HashMap<>();
-    // response.put("message", "로그아웃 되었습니다.");
-    //
-    // log.info("로그아웃 응답 바디: {}", response);
-    //
-    // return ResponseEntity.ok()
-    // .contentType(MediaType.APPLICATION_JSON)
-    // .body(response);
-    // }
+ 
 
     @Operation(summary = "랜덤 닉네임 생성")
     @GetMapping("/generate_nickname")
@@ -93,12 +45,11 @@ public class UserController {
     }
 
     @Operation(summary = "닉네임 제한 확인")
-    @PostMapping("/limit_nickname")
+    @GetMapping("/limit_nickname")
     public ResponseEntity<?> limitName(
-            @Parameter(hidden = true) @AuthenticationPrincipal User user,
             @Parameter(description = "제한할 닉네임") @RequestParam String nickname) {
-        userService.limitNickname(nickname);
-        return ResponseEntity.ok().build();
+        NickNameCheckResponse resp = userService.checkNickname(nickname);
+        return ResponseEntity.ok(resp);
     }
 
     @Operation(summary = "닉네임 보유 여부 확인")
@@ -113,25 +64,15 @@ public class UserController {
     @PutMapping("/update_fcm")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<String> refreshFcmToken(
-            @RequestParam("token") String fcmToken,
+            @RequestBody FcmTokenRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal User user) {
 
-        System.out.println("update FCM token: " + fcmToken);
-        userService.fcmTokenRefresh(user, fcmToken);
+        System.out.println("update FCM token: " + request.fcmToken());
+        userService.fcmTokenRefresh(user, request.fcmToken());
         return ResponseEntity.ok("FCM 토큰이 재발급 되었습니다.");
     }
 
-    @Operation(summary = "비밀번호 및 프로필 정보 수정")
-    @PutMapping("/modity_password")
-    @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> changeProfile(
-            @RequestParam String email,
-            @RequestParam String providerType,
-            @RequestParam String password,
-            @RequestParam String providerId) {
-        userService.changeProfile(email, providerType, password, providerId);
-        return ResponseEntity.ok().build();
-    }
+
 
     @Operation(summary = "Access Token 유효성 검사")
     @GetMapping("/check")
@@ -148,7 +89,7 @@ public class UserController {
             @Parameter(hidden = true) @AuthenticationPrincipal User user,
             @RequestBody DescriptionRequestDto dto) {
         User user1 = userService.modifyDescription(dto, user);
-        return ResponseEntity.ok().body(user1);
+        return ResponseEntity.ok(Map.of("description", user1.getDescription()));
     }
 
     @Operation(summary = "프로필 이미지 수정")
@@ -162,13 +103,14 @@ public class UserController {
     }
 
     @Operation(summary = "알림 전체 설정 토글")
-    @PostMapping("/alarm-settings/toggle")
+    @PutMapping("/alarm-settings/toggle")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> toggleAlarm(
             @Parameter(hidden = true) @AuthenticationPrincipal User user,
             @RequestParam boolean enabled) {
         return ResponseEntity.ok(userService.toggleAllAlarm(user, enabled));
     }
+
 
     @Operation(summary = "회원 탈퇴")
     @DeleteMapping("/me")

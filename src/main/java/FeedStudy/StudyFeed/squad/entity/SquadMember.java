@@ -13,6 +13,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(name = "squad_member")
 public class SquadMember extends BaseEntity {
 
 

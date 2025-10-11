@@ -13,6 +13,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
+@Table(name = "report_user")
 public class ReportUser extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

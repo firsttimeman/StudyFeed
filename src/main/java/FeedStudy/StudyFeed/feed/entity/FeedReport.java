@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor
-@Table(uniqueConstraints = @UniqueConstraint(
+@Table(name = "feed_report", uniqueConstraints = @UniqueConstraint(
         columnNames = {"user_id", "feed_id"}
 ))
 public class FeedReport extends BaseEntity {

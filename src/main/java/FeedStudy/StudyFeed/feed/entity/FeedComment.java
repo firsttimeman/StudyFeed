@@ -14,6 +14,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(name = "feed_comment")
 public class FeedComment extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

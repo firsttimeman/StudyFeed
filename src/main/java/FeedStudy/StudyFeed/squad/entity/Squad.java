@@ -21,6 +21,7 @@ import java.util.Optional;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(name = "squad")
 public class Squad extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

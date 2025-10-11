@@ -15,6 +15,7 @@ import java.util.Optional;
 @Setter
 @Entity
 @NoArgsConstructor
+@Table(name = "feed")
 public class Feed extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
