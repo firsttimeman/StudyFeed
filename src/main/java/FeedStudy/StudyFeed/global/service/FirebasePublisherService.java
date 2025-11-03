@@ -39,8 +39,7 @@ public class FirebasePublisherService {
         dataMap.put("type", pushData[1]);
 
 
-        Notification notification = Notification
-                .builder()
+        Notification notification = Notification.builder()
                 .setTitle(title)
                 .setBody(message)
                 .build();
@@ -65,8 +64,7 @@ public class FirebasePublisherService {
         dataMap.put("id", pushData[0]);
         dataMap.put("type", pushData[1]);
 
-        Notification notification = Notification
-                .builder()
+        Notification notification = Notification.builder()
                 .setTitle(title)
                 .setBody(message)
                 .build();
@@ -90,7 +88,7 @@ public class FirebasePublisherService {
 
     }
 
-    public void createSubscription(String topic, @RequestBody List<String> registrationTokens) throws FirebaseMessagingException {
+    public void createSubscription(String topic, List<String> registrationTokens) throws FirebaseMessagingException {
         fcm.subscribeToTopic(registrationTokens, topic);
     }
 
