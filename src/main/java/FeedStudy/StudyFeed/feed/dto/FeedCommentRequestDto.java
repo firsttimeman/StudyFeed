@@ -10,17 +10,16 @@ import lombok.ToString;
 @Setter
 @ToString
 public class FeedCommentRequestDto {
+    @Schema(description = "대댓글 작성 시 부모 댓글 ID (루트 댓글일 경우 null)")
+    private Long parentCommentId;
 
-    @Schema(description = "작성할 피드 코멘트 id")
-    private Long feedCommentPid;
+    @Schema(description = "작성할 피드 ID", required = true)
+    @NotNull
+    private Long feedId;
 
-    @Schema(description = "작성할 내용")
+    @Schema(description = "댓글 내용", required = true)
     @NotNull
     private String content;
-
-    @Schema(description = "작성할 피드의 id")
-    @NotNull
-    private Long feedPid;
 
 
 }

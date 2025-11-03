@@ -1,7 +1,8 @@
 package FeedStudy.StudyFeed.feed.dto;
 
 import FeedStudy.StudyFeed.feed.entity.Feed;
-import FeedStudy.StudyFeed.feed.entity.FeedComment;
+import FeedStudy.StudyFeed.feed.entity.FeedImage;
+import FeedStudy.StudyFeed.global.type.Topic;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,32 +18,34 @@ public class FeedDetailResponse {
     private Long id;
     private String nickName;
     private String profileImageUrl;
-    private String category;
+    private Topic category;
     private String content;
     private List<String> images;
-    private boolean like;
+    private boolean likedByMe; // 내가 이 피드에 좋아요를 눌렀는가?
     private Integer likeCount;
     private Integer commentCount;
-    private Boolean isMine;
+    private boolean mine; // 내가 쓴 글인가?
     private String dateTime;
-    private List<FeedCommentDto> comments;
 
 
-    public static FeedDetailResponse toDto(Feed feed, Long userId, boolean isLike) {
+    public static FeedDetailResponse toDto(Feed feed, Long userId, boolean likedByMe) {
         Long id = feed.getId();
         String nickName = feed.getUser().getNickName();
         String profileImageUrl = feed.getUser().getImageUrl();
-        String category = feed.getCategory();
+        Topic category = feed.getCategory();
         String content = feed.getContent();
-        List<String> images = feed.getImages().stream().map(image -> image.getImageUrl()).toList();
+        List<String> images = feed.getImages() == null
+                ? List.of()
+                : feed.getImages().stream().map(FeedImage::getImageUrl).toList();
         Integer likeCount = feed.getLikeCount();
         Integer commentCount = feed.getCommentCount();
-        Boolean isMine = feed.getUser().getId() == userId;
-        String dateTime = feed.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-        List<FeedCommentDto> comments = feed.getComments().stream()
-                .map(comment -> FeedCommentDto.toDto(comment, userId)).toList();
+        boolean mine = feed.getUser().getId().equals(userId);
+        var createdAt = feed.getCreatedAt();
+        String dateTime = createdAt == null
+                ? ""
+                : createdAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-        return new FeedDetailResponse(id, nickName, profileImageUrl, category, content, images, isLike,
-                likeCount, commentCount, isMine, dateTime, comments);
+        return new FeedDetailResponse(id, nickName, profileImageUrl, category, content, images, likedByMe,
+                likeCount, commentCount, mine, dateTime);
     }
 }

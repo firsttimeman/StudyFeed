@@ -1,11 +1,13 @@
 package FeedStudy.StudyFeed.feed.dto;
 
 import FeedStudy.StudyFeed.feed.entity.Feed;
+import FeedStudy.StudyFeed.global.type.Topic;
 import FeedStudy.StudyFeed.user.entity.User;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +19,7 @@ public class FeedSimpleDto {
     private Long id;
     private String nickname;
     private String profileUrl;
-    private String category;
+    private Topic category;
     private String content;
     private List<String> imageList;
     private boolean like;
@@ -26,19 +28,31 @@ public class FeedSimpleDto {
     private Boolean mine;
     private String regDt;
 
-    public static FeedSimpleDto toDto(Feed feed, Long userId, boolean isLike) {
-        Long id = feed.getId();
-        String nickname = feed.getUser().getNickName();
-        String profileImageUrl = feed.getUser().getImageUrl();
-        String category = feed.getCategory();
-        String content = feed.getContent();
-        List<String> images = feed.getImages().stream().map(i -> i.getImageUrl()).toList();
-        Integer likeCount = feed.getLikeCount();
-        Integer commentCount = feed.getCommentCount();
-        Boolean isMine = feed.getUser().getId() == userId;
-        String datetime = feed.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-        return new FeedSimpleDto(id, nickname, profileImageUrl, category, content,
-                images, isLike, likeCount, commentCount, isMine, datetime);
+    public static FeedSimpleDto of(Feed feed,
+                                   List<String> imageUrls,
+                                   boolean likedByMe,
+                                   Long currentUserId) {
+
+        boolean mine = feed.getUser().getId().equals(currentUserId);
+        String datetime = (feed.getCreatedAt() != null)
+                ? feed.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                : LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+        return new FeedSimpleDto(
+                feed.getId(),
+                feed.getUser().getNickName(),
+                feed.getUser().getImageUrl(),
+                feed.getCategory(),
+                feed.getContent(),
+                imageUrls,             // 외부에서 미리 준비한 이미지 리스트
+                likedByMe,
+                feed.getLikeCount(),
+                feed.getCommentCount(),
+                mine,
+                datetime
+        );
     }
+
+
 }

@@ -16,46 +16,81 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FeedCommentDto {
+
+
     private Long id;
+    private Long parentId;
     private String nickName;
     private String profileImageUrl;
     private String content;
     private String dateTime;
-    private Long parentId;
-    private boolean isMine;
-    private List<FeedCommentDto> replies;
-    private boolean hasMoreReplies;
-    private boolean isDeleted;
+    private boolean mine;
+    private boolean deleted;
 
-    public static FeedCommentDto toDto(FeedComment comment, Long userId){
+    // 루트 댓글 전용
+    private Integer replyCount;            // 대댓글 총 개수
+    private List<FeedCommentDto> previewReplies; // 미리보기 대댓글 2개
+    private Boolean hasMoreReplies;        // “답글 더보기” 노출 여부
 
-        List<FeedCommentDto> allReplies = comment.getChildComments().stream() // todo 여기서 n+1 문제 가능
-                .sorted(Comparator.comparing(BaseEntity::getCreatedAt))
-                .map(reply -> FeedCommentDto.toDto(reply, userId))
-                .toList();
+    private static final DateTimeFormatter F =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-        List<FeedCommentDto> repliesShow = allReplies.size() > 2 ? allReplies.subList(0, 2) : allReplies;
+    public static String fmt(LocalDateTime t) {
+        return t == null ? LocalDateTime.now().format(F) : t.format(F);
+    }
 
-        boolean isDeleted = comment.isDeleted();
-        String content = isDeleted ? "작성자가 댓글을 삭제했습니다." : comment.getContent();
-        String nickName = isDeleted ? null : comment.getUser().getNickName(); // todo n+1 문제 가능
-        String profileImageUrl = isDeleted ? null : comment.getUser().getImageUrl();  // todo n+1 문제 가능
 
+    /** 루트 댓글용 팩토리 */
+    public static FeedCommentDto forRoot(FeedComment root,
+                                         List<FeedCommentDto> previewReplies,
+                                         Long currentUserId) {
+        boolean deleted = root.isDeleted();
+        String nick = deleted ? null : root.getUser().getNickName();
+        String profile = deleted ? null : root.getUser().getImageUrl();
+        boolean mine = root.getUser() != null && root.getUser().getId().equals(currentUserId);
+        int replyCount = root.getReplyCount();
+        boolean hasMore = replyCount > (previewReplies == null ? 0 : previewReplies.size());
 
         return new FeedCommentDto(
-                comment.getId(),
-                nickName,
-                profileImageUrl,
-                content,
-                comment.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
-                comment.getParentComment() != null ? comment.getParentComment().getId() : null, //  // todo n+1 문제 가능
-                comment.getUser().getId().equals(userId),
-                repliesShow,
-                allReplies.size() > 2,
-                isDeleted
+                root.getId(),
+                null,
+                nick,
+                profile,
+                root.getContent(),
+                fmt(root.getCreatedAt()),
+                mine,
+                deleted,
+                replyCount,
+                previewReplies,
+                hasMore
         );
     }
 
+    /** 대댓글용 팩토리 */
+    public static FeedCommentDto forReply(FeedComment reply,
+                                          Long parentId,
+                                          Long currentUserId) {
+        boolean deleted = reply.isDeleted();
+        String nick = deleted ? null : reply.getUser().getNickName();
+        String profile = deleted ? null : reply.getUser().getImageUrl();
+        boolean mine = reply.getUser() != null && reply.getUser().getId().equals(currentUserId);
+
+        return new FeedCommentDto(
+                reply.getId(),
+                parentId,
+                nick,
+                profile,
+                reply.getContent(),
+                fmt(reply.getCreatedAt()),
+                mine,
+                deleted,
+                null,
+                null,
+                null
+        );
     }
+
+
+}
 
 
