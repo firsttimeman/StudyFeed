@@ -6,7 +6,7 @@ import FeedStudy.StudyFeed.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -29,8 +29,8 @@ public class UserController {
     @Operation(summary = "랜덤 닉네임 생성")
     @GetMapping("/generate_nickname")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<String> makeNickName() {
-        userService.makeNickName();
+    public ResponseEntity<String> makeNickName(@AuthenticationPrincipal User user) {
+        userService.makeNickName(user);
         return ResponseEntity.ok("NickName 생성 완료");
     }
 

@@ -2,7 +2,9 @@ package FeedStudy.StudyFeed.auth.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
@@ -10,6 +12,8 @@ import java.time.LocalDate;
 @Getter
 @Setter
 @Schema(description = "회원가입 dto")
+@NoArgsConstructor
+@AllArgsConstructor
 public class SignUpRequestDto {
 
     @NotNull(message = "이메일을 입력하셔야 합니다.")

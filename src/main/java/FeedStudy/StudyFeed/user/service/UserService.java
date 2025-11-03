@@ -1,8 +1,6 @@
 package FeedStudy.StudyFeed.user.service;
 
-import FeedStudy.StudyFeed.feed.entity.Feed;
-import FeedStudy.StudyFeed.feed.entity.FeedComment;
-import FeedStudy.StudyFeed.feed.entity.FeedImage;
+
 import FeedStudy.StudyFeed.feed.repository.FeedCommentRepository;
 import FeedStudy.StudyFeed.feed.repository.FeedImageRepository;
 import FeedStudy.StudyFeed.feed.repository.FeedLikeRepository;
@@ -11,17 +9,7 @@ import FeedStudy.StudyFeed.global.exception.ErrorCode;
 import FeedStudy.StudyFeed.global.exception.exceptiontype.MemberException;
 import FeedStudy.StudyFeed.global.service.S3FileService;
 import FeedStudy.StudyFeed.global.utils.NickNameUtils;
-import FeedStudy.StudyFeed.openchat.entity.ChatImage;
-import FeedStudy.StudyFeed.openchat.entity.ChatMessage;
-import FeedStudy.StudyFeed.openchat.entity.ChatRoom;
-import FeedStudy.StudyFeed.openchat.entity.ChatRoomUser;
-import FeedStudy.StudyFeed.openchat.repository.ChatMessageRepository;
-import FeedStudy.StudyFeed.openchat.repository.ChatRoomRepository;
-import FeedStudy.StudyFeed.openchat.repository.ChatRoomUserRepository;
-import FeedStudy.StudyFeed.squad.entity.Squad;
-import FeedStudy.StudyFeed.squad.entity.SquadChat;
-import FeedStudy.StudyFeed.squad.entity.SquadChatImage;
-import FeedStudy.StudyFeed.squad.entity.SquadMember;
+
 import FeedStudy.StudyFeed.squad.repository.SquadChatRepository;
 import FeedStudy.StudyFeed.squad.repository.SquadMemberRepository;
 import FeedStudy.StudyFeed.squad.repository.SquadRepository;
@@ -36,6 +24,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
@@ -70,15 +60,15 @@ public class UserService {
     private final FeedCommentRepository feedCommentRepository;
     private final SquadMemberRepository squadMemberRepository;
     private final SquadRepository squadRepository;
-    private final ChatRoomRepository chatRoomRepository;
-    private final ChatRoomUserRepository chatRoomUserRepository;
-    private final ChatMessageRepository chatMessageRepository;
 
 
 
-    public String makeNickName() {
+
+    public String makeNickName(User user) {
 
         String generateNickName = generateUniqueNickName();
+        user.setNickName(generateNickName);
+        userRepository.save(user);
         return generateNickName;
     }
 
@@ -226,99 +216,87 @@ public class UserService {
 
     }
 
-    //todo 여기 설정 피드랑 스쿼드 다하고 나서 할것
+    //todo 나중에 채팅 기능 향방보고 결정
     @Transactional
     public void deleteUser(User user) {
-        if (!userRepository.existsById(user.getId())) {
+        Long uid = user.getId();
+
+        if (!userRepository.existsById(uid)) {
             throw new MemberException(ErrorCode.USER_NOT_FOUND);
         }
 
-        String profileImageUrl = user.getImageUrl();
-        if (profileImageUrl != null && !profileImageUrl.isBlank() &&
-                !profileImageUrl.equals("avatar_placeholder.png")) {
-            String fileName = profileImageUrl.substring(profileImageUrl.lastIndexOf("/") + 1);
-            s3FileService.delete(fileName);
+        // --- 1️⃣ S3 삭제 리스트 ---
+        List<String> s3Keys = new ArrayList<>();
+
+        // 프로필 이미지
+        if (user.getImageUrl() != null && !user.getImageUrl().isBlank()
+            && !user.getImageUrl().endsWith("avatar_placeholder.png")) {
+            s3Keys.add(s3FileService.extractKeyFromUrl(user.getImageUrl()));
         }
 
-        List<FeedComment> otherComments = feedCommentRepository.findByUser(user).stream()
-                .filter(comment -> !comment.getFeed().getUser().equals(user)) // todo LAZY 접근 2단계 → N+1
-                .toList();
+        // --- 2️⃣ Feed (내 피드글은 하드 삭제) ---
+        List<Long> feedIds = feedRepository.findIdsByOwner(uid);
+        if (!feedIds.isEmpty()) {
+            List<String> feedImageUrls = feedImageRepository.findUrlsByFeedIds(feedIds);
+            feedImageUrls.stream()
+                    .map(s3FileService::extractKeyFromUrl)
+                    .forEach(s3Keys::add);
 
-        for (FeedComment otherComment : otherComments) {
-            otherComment.setUser(null);
-        } // 다른 사람의 피드에서 작성자만 null 처리 글들은 삭제 X
-
-        feedLikeRepository.deleteAllByUser(user); // 다른 사용자의 피드에서 like를 없애는 기능
-
-        List<Feed> userFeeds = feedRepository.findByUser(user);
-        List<FeedImage> feedImages = feedImageRepository.findAllByFeedIn(userFeeds);
-        for (FeedImage feedImage : feedImages) {
-            s3FileService.delete(feedImage.getUniqueName());
+            feedRepository.deleteAllByOwner(uid);
         }
 
-        feedRepository.deleteAll(userFeeds); // 최종적으로 탈퇴할 유저의 피드를 전부 삭제를 하는 기능 // todo n+1 문제 발생 가능
-        //이미 FeedImage는 선삭제했지만, Feed가 다른 연관(댓글 등)과 영속성 전이/고아제거로 묶여 있으면 JPA가 개별 엔티티를 로딩하며 삭제를 수행하는 과정에서 추가 LAZY 로딩이 발생할 수 있습니다.
+        // --- 3️⃣ FeedComment (타인의 피드에 단 댓글은 소프트 삭제) ---
+        feedCommentRepository.softDeleteOthersByUser(uid);
 
-        // 7. 유저가 참여한 스쿼드의 채팅들에서 작성자만 null 처리 + 이미지 삭제
-        List<SquadMember> joinedSquads = squadMemberRepository.findByUser(user);
-        for (SquadMember member : joinedSquads) {
-            Squad squad = member.getSquad();  // todo LAZY → N
+        // --- 4️⃣ FeedLike (좋아요 전부 제거) ---
+        feedLikeRepository.deleteAllByUserId(uid);
 
-            List<SquadChat> userChats = squadChatRepository.findBySquadAndUser(squad, user); //todo 스쿼드마다 조회 → N
-            for (SquadChat chat : userChats) {
-                for (SquadChatImage image : chat.getImages())  { // todo  이미지 LAZY → N
-                    s3FileService.delete(image.getUniqueName());
-                }
-                chat.setUser(null); // 작성자 null 처리
-            }
-
-            squadMemberRepository.delete(member); // 유저 탈퇴 처리 // Todo n+1 문제는 아니지만
-            //  반복 삭제로 쿼리 수 증가(퍼포먼스 악화). deleteAllInBatch(…)나 deleteAllByUser(…) 같은 벌크 메서드로 줄일 수 있습니다.
-
-
+        // --- 5️⃣ Squad (내가 개설한 모임은 하드 삭제) ---
+        List<Long> squadIds = squadRepository.findIdsByOwner(uid);
+        if (!squadIds.isEmpty()) {
+            squadRepository.deleteAllByOwner(uid);
         }
 
-        List<Squad> createdFeeds = squadRepository.findByUser(user);
-        for (Squad squad : createdFeeds) {
-            List<SquadChat> chats = squadChatRepository.findBySquad(squad);
-            for (SquadChat chat : chats) {
-                for (SquadChatImage image : chat.getImages()) {
-                    s3FileService.delete(image.getUniqueName());
-                }
-            }
-            squadChatRepository.deleteAll(chats);
-            squadRepository.delete(squad);
+        // --- 6️⃣ SquadChat (내가 쓴 채팅은 소프트 삭제 + 이미지 삭제) ---
+        List<String> chatImageKeys = squadChatRepository.findAllImageKeysByAuthor(uid);
+        if (!chatImageKeys.isEmpty()) {
+            chatImageKeys.forEach(s3Keys::add);
+            squadChatRepository.deleteAllImagesByAuthor(uid);
         }
+        squadChatRepository.softDeleteAllByAuthor(uid);
 
-        List<ChatRoomUser> joinedRooms = chatRoomUserRepository.findByUser(user);
-        for (ChatRoomUser roomUser : joinedRooms) {
-            ChatRoom room = roomUser.getChatRoom();         // todo LAZY → N
-
-            List<ChatMessage> userMessage = chatMessageRepository.findByChatRoomAndSender(room, user); // todo 방마다 조회 → N
-            for (ChatMessage message : userMessage) {
-                for (ChatImage image : message.getImages()) { // todo 이미지 LAZY → N
-                    s3FileService.delete(image.getUniqueName());
-                }
-                message.setSender(null);
-            }
-            chatRoomUserRepository.delete(roomUser);
-            //Todo chatRoomUserRepository.delete(roomUser);  // 루프 내 개별 삭제
-            //	전형적 N+1은 아니지만, 반복 삭제로 쿼리 수 증가(퍼포먼스 악화). deleteAllInBatch(…)나 deleteAllByUser(…) 같은 벌크 메서드로 줄일 수 있습니다.
+        // --- 7️⃣ SquadMember (내 참여기록 삭제 + 정원 보정) ---
+        List<Long> joinedSquads = squadMemberRepository.findJoinedSquadIds(uid);
+        for (Long squadId : joinedSquads) {
+            squadRepository.tryDecreaseCount(squadId);
+            squadRepository.openIfNotFull(squadId);
         }
+        squadMemberRepository.deleteAllJoined(uid);
+        squadMemberRepository.deleteAllPending(uid);
+        squadMemberRepository.cleanupNonJoined(uid);
 
-        List<ChatRoom> createdRooms = chatRoomRepository.findByOwner(user);
-        for (ChatRoom room : createdRooms) { // todo room.getMessages() LAZY → 방 수만큼 조회
-            for (ChatMessage message : room.getMessages()) {
-                for (ChatImage image : message.getImages()) { // todo 메시지당 이미지 LAZY → 추가 N
-                    s3FileService.delete(image.getUniqueName());
-                }
-            }
-            chatRoomRepository.delete(room); // todo 개별 삭제 루프
-        }
-
+        // --- 8️⃣ RefreshToken 제거 ---
         refreshRepository.deleteRefreshToken(user.getEmail());
+        user.setFcmToken(null);
 
+        // --- 9️⃣ 최종 유저 삭제 ---
         userRepository.delete(user);
+
+        // --- 🔟 트랜잭션 커밋 후 S3 삭제 ---
+        if (!s3Keys.isEmpty() && TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    for (String key : s3Keys) {
+                        try {
+                            s3FileService.delete(key);
+                        } catch (Exception e) {
+                            log.warn("S3 파일 삭제 실패: {}", key, e);
+                        }
+                    }
+                }
+            });
+        }
 
     }
 

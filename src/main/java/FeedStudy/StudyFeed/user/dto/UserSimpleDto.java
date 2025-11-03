@@ -2,11 +2,13 @@ package FeedStudy.StudyFeed.user.dto;
 
 import FeedStudy.StudyFeed.user.entity.User;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDate;
 
 @Getter
+@Builder
 @AllArgsConstructor
 public class UserSimpleDto {
 
@@ -17,10 +19,11 @@ public class UserSimpleDto {
 
     public static UserSimpleDto toDto(User user) {
 
-        String nickname = user.getNickName();
-        String profileUrl = user.getImageUrl();
-        String gender = user.getGender();
-        LocalDate birth = user.getBirthDate();
-        return new UserSimpleDto(nickname, profileUrl, gender, birth);
+        return UserSimpleDto.builder()
+                .nickname(user.getNickName())
+                .profileUrl(user.getImageUrl())
+                .gender(user.getGender())
+                .birth(user.getBirthDate())
+                .build();
     }
 }
