@@ -19,26 +19,35 @@ import java.util.List;
 public class BlockService   {
 
     private final BlockRepository blockRepository;
+    private final UserRepository userRepository;
 
 
     @Transactional
-    public void createBlock(User user, User other) {
+    public void createBlock(User user, Long otherId) {
+
+        User other = userRepository.findById(otherId)
+                .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
+
+
+        if(user.getId().equals(other.getId())) {
+            throw new BlockException(ErrorCode.BLOCK_SELF_NOT_ALLOWED);
+        }
+
 
         if(blockRepository.findByBlockerAndBlocked(user, other).isPresent()) {
             throw new BlockException(ErrorCode.BLOCK_ALREADY_EXISTS);
         }
 
-        if(user.getId() == other.getId()) {
-            throw new BlockException(ErrorCode.BLOCK_SELF_NOT_ALLOWED);
-
-        }
 
         Block block = new Block(user, other);
         blockRepository.save(block);
     }
 
     @Transactional
-    public void removeBlock(User user, User other) {
+    public void removeBlock(User user, Long otherId) {
+        User other = userRepository.findById(otherId)
+                .orElseThrow(() -> new MemberException(ErrorCode.USER_NOT_FOUND));
+
         Block block = blockRepository.findByBlockerAndBlocked(user, other)
                 .orElseThrow(() -> new BlockException(ErrorCode.BLOCK_NOT_FOUND));
 
@@ -47,7 +56,7 @@ public class BlockService   {
 
     
     public List<BlockSimpleDto> blockList(User user) {
-        return blockRepository.findByBlocker(user).stream()
+        return blockRepository.findByBlockerWithBlocked(user).stream()
                 .map(block -> BlockSimpleDto.toDto(block.getBlocked()))
                 .toList();
     }
