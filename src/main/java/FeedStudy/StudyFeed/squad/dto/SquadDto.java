@@ -2,6 +2,7 @@ package FeedStudy.StudyFeed.squad.dto;
 
 import FeedStudy.StudyFeed.global.type.Gender;
 import FeedStudy.StudyFeed.global.type.JoinType;
+import FeedStudy.StudyFeed.global.type.Topic;
 import FeedStudy.StudyFeed.squad.entity.Squad;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,7 +16,7 @@ public class SquadDto {
 
     private Long id;
     private String title;
-    private String category;
+    private Topic category;
     private String regionMain;
     private String regionSub;
     private String description;

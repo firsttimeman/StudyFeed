@@ -1,8 +1,8 @@
 package FeedStudy.StudyFeed.squad.entity;
 
 import FeedStudy.StudyFeed.global.entity.BaseEntity;
+import FeedStudy.StudyFeed.global.type.MembershipStatus;
 import FeedStudy.StudyFeed.user.entity.User;
-import FeedStudy.StudyFeed.global.type.AttendanceStatus;
 import FeedStudy.StudyFeed.global.type.JoinType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -10,10 +10,12 @@ import lombok.*;
 @Entity
 @Getter
 @Builder
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "squad_member")
+@Table(
+        name = "squad_member",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"squad_id", "user_id"})
+)
 public class SquadMember extends BaseEntity {
 
 
@@ -30,23 +32,39 @@ public class SquadMember extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private AttendanceStatus attendanceStatus;
+    private MembershipStatus membershipStatus;
 
     @Column(nullable = false)
-    private boolean isOwner;
+    private boolean owner;
 
-    private SquadMember(User user, Squad squad) {
+    private SquadMember(User user, Squad squad, boolean owner, MembershipStatus status) {
         this.user = user;
         this.squad = squad;
-        this.isOwner = squad.getUser().getId().equals(user.getId());
-        this.attendanceStatus = squad.getUser().getId() == user.getId() ||
-                squad.getJoinType().equals(JoinType.DIRECT) ? AttendanceStatus.JOINED : AttendanceStatus.PENDING;
+        this.owner = owner;
+        this.membershipStatus = status;
     }
 
-    public static SquadMember create(User user, Squad squad) {
-        return new SquadMember(user, squad);
+    /** 스쿼드 리더용: 무조건 JOINED + owner=true */
+    public static SquadMember createOwner(User user, Squad squad) {
+        return new SquadMember(user, squad, true, MembershipStatus.JOINED);
     }
 
+    /** 즉시 참여(DIRECT)용: JOINED + owner=false */
+    public static SquadMember createJoined(User user, Squad squad) {
+        return new SquadMember(user, squad, false, MembershipStatus.JOINED);
+    }
+
+    /** 승인형(APPROVAL) 신청: PENDING + owner=false */
+    public static SquadMember createPending(User user, Squad squad) {
+        return new SquadMember(user, squad, false, MembershipStatus.PENDING);
+    }
+
+
+    public void approve()   { this.membershipStatus = MembershipStatus.JOINED; }
+    public void reject()    { this.membershipStatus = MembershipStatus.REJECTED; }
+    public void kickOut()   { this.membershipStatus = MembershipStatus.KICKED_OUT; }
+
+    public boolean isOwner() { return owner; }
 
 
 }

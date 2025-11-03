@@ -1,13 +1,13 @@
 package FeedStudy.StudyFeed.squad.dto;
 
-import FeedStudy.StudyFeed.global.type.AttendanceStatus;
+import FeedStudy.StudyFeed.global.type.MembershipStatus;
+import FeedStudy.StudyFeed.global.type.Topic;
 import FeedStudy.StudyFeed.squad.entity.Squad;
 import FeedStudy.StudyFeed.squad.entity.SquadMember;
 import FeedStudy.StudyFeed.user.dto.UserSimpleDto;
 import FeedStudy.StudyFeed.user.entity.User;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -15,141 +15,93 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
+import java.util.Objects;
 
 @Getter
-@Setter
 @AllArgsConstructor
 public class SquadDetailDto {
 
-    private String status;
-    private String category;
+    private String status;                 // "모집 중" / "모집 마감"
+    private Topic category;
     private String title;
     private String description;
     private String datetime;
     private String region;
     private String genderRequirement;
     private String ageRequirement;
-    private int maxParticipantCount;
+
+    // 숫자/상태
+    private int     maxParticipantCount;
+    private long    ownerId;
+
+    // 행동 판단용 상태 신호 (프론트에서 버튼/문구 결정)
     private boolean isOwner;
     private boolean hasPendingUsers;
+    private boolean isClosed;
+    private boolean isExpired;
+    private String  myMembership;          // "OWNER","JOINED","PENDING","REJECTED","KICKED","NONE"
+
+    // 참가자(조인 필요: fetch join으로 N+1 방지)
     private List<UserSimpleDto> participants;
-    private long ownerId;
-    private String btnMsg;
-    private boolean btnEnabled;
 
-
-    public static SquadDetailDto toDto(User user, Squad squad) {
-        String status = calculateStatus(squad);
-        String category = squad.getCategory();
-        String title = squad.getTitle();
-        String description = squad.getDescription();
+    public static SquadDetailDto toDto(User user, Squad squad,
+                                       List<UserSimpleDto> participants,
+                                       boolean hasPendingUsers,
+                                       String myMembership) {
+        // 기존 계산 재사용
+        String status   = calculateStatusText(squad);
+        Topic category  = squad.getCategory();
+        String title    = squad.getTitle();
+        String desc     = squad.getDescription();
         String datetime = formatDateTime(squad);
-        String region;
+        String region   = "전체".equals(squad.getRegionMain())
+                ? "전체" : squad.getRegionMain() + " " + squad.getRegionSub();
+        String gender   = squad.getGenderRequirement().getName();
+        String ageReq   = squad.getMinAge() + "세 ~ " + squad.getMaxAge() + "세";
+        int maxPart     = squad.getMaxParticipants();
+        long ownerId    = squad.getUser().getId();
 
-        if(squad.getRegionMain().equals("전체")) {
-            region = "전체";
-        } else {
-            region = squad.getRegionMain() + " " + squad.getRegionSub();
+        boolean isOwner = Objects.equals(ownerId, user.getId());
+        boolean isClosed = squad.isClosed();
+        boolean isExpired = isExpired(squad);
+
+        return new SquadDetailDto(
+                status, category, title, desc, datetime, region,
+                gender, ageReq,
+                maxPart, ownerId,
+                isOwner, hasPendingUsers, isClosed, isExpired, myMembership,
+                participants
+        );
+    }
+
+    private static boolean isExpired(Squad squad) {
+        LocalDate today = LocalDate.now();
+        if (squad.getDate().isBefore(today)) return true;
+        if (squad.getDate().isEqual(today) && squad.getTime() != null) {
+            return squad.getTime().isBefore(LocalTime.now());
         }
+        return false;
+    }
 
-        String genderRequirement = squad.getGenderRequirement().getName();
-        String ageRequirement = new StringBuilder().append(squad.getMinAge()).append("세 ~ ").append(squad.getMaxAge())
-                .append("세").toString();
-        int maxParticipants = squad.getMaxParticipants();
-        boolean isOwner = squad.getUser().getId() == user.getId();
-        boolean hasPendingUsers = squad.getMembers().stream()
-                .anyMatch(member -> member.getAttendanceStatus() == AttendanceStatus.PENDING);
-        List<UserSimpleDto> participants = squad.getMembers().stream()
-                .filter(member -> member.getAttendanceStatus() == AttendanceStatus.JOINED)
-                .map(m -> UserSimpleDto.toDto(m.getUser())).toList(); // todo n+1 발생 가능
-        Long ownerId = squad.getUser().getId();
-        String btnMsg;
-        boolean btnEnabled = false;
 
-        if(user.equals(squad.getUser())) {
-            btnMsg = "대화방 가기";
-            btnEnabled = true;
-        } else {
-            Optional<SquadMember> squadMember = squad.getMembers().stream()
-                    .filter(member -> member.getUser().equals(user))
-                    .findAny();
-
-            if(squadMember.isPresent()) {
-                SquadMember member = squadMember.get();
-
-                switch(member.getAttendanceStatus()) {
-                    case JOINED -> {
-                        btnMsg = "대화방 가기";
-                        btnEnabled = true;
-                        break;
-                    }
-                    case PENDING -> {
-                        btnMsg = "참여 승인을 기다리는중...";
-                        break;
-                    }
-                    case REJECTED ->  {
-                        btnMsg = "참여가 거절된 모임";
-                        break;
-                    }
-                    case KICKED_OUT ->  {
-                        btnMsg = "모임장에 의해 내보내진 모임";
-                        break;
-                    }
-                    default ->  {
-                        btnMsg = "대화방 가기";
-                        btnEnabled = true;
-                    }
-
-                }
-            } else if(squad.isClosed()) {
-                btnMsg = "마감된 모임";
-            } else {
-                LocalDateTime squadDateTime = LocalDateTime.of(
-                        squad.getDate(),
-                        squad.getTime() != null ? squad.getTime() : LocalTime.of(23, 59, 59));
-                if(squadDateTime.isBefore(LocalDateTime.now())) {
-                    btnMsg = "종료된 모임";
-                } else {
-                    btnMsg = "참여하기";
-                    btnEnabled = true;
-                }
-            }
-        }
-        return new SquadDetailDto(status, category, title, description, datetime, region,
-                genderRequirement, ageRequirement, maxParticipants, isOwner,
-                hasPendingUsers, participants, ownerId, btnMsg, btnEnabled);
+    private static String calculateStatusText(Squad squad) {
+        return (squad.isClosed() || isExpired(squad)) ? "모집 마감" : "모집 중";
     }
 
     private static String formatDateTime(Squad squad) {
-        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일 E", Locale.KOREAN);
-        String dateStr = squad.getDate().format(dateTimeFormatter);
-
-        if(squad.getTime() == null) {
-            return dateStr;
-        }
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일 E", Locale.KOREAN);
+        String dateStr = squad.getDate().format(fmt);
+        if (squad.getTime() == null) return dateStr;
 
         int hour = squad.getTime().getHour();
         int minute = squad.getTime().getMinute();
 
         String period = hour < 12 ? "오전" : "오후";
-        int displayHour = hour % 12 == 0 ? 12 : hour % 12;
+        int displayHour = (hour % 12 == 0) ? 12 : (hour % 12);
 
         StringBuilder timeStr = new StringBuilder(period + " " + displayHour + "시");
-        if (minute != 0) {
-            timeStr.append(" ").append(minute).append("분");
-        }
+        if (minute != 0) timeStr.append(" ").append(minute).append("분");
 
-        return dateStr + " " + timeStr.toString();
+        return dateStr + " " + timeStr;
     }
-
-    private static String calculateStatus(Squad squad) {
-        if(squad.isClosed() || squad.getDate().isBefore(LocalDate.now()) ||
-           squad.getDate().isEqual(LocalDate.now()) && squad.getTime() != null
-           && squad.getTime().isBefore(LocalTime.now())) {
-            return "모집 마감";
-        }
-        return "모집 중";
-    }
-
 }
