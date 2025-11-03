@@ -13,20 +13,19 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-@Table(name = "report_user")
+@Table(
+        name = "report_user",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"reporter_id", "reported_id"})
+)
 public class ReportUser extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reporter_id", nullable = false)
-    private User reporterId;
+    private User reporter;  // ✅ 변경
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reported_id", nullable = false)
-    private User reportedId;
-
-    private String category;
-
-    private String content;
+    private User reported;  // ✅ 변경
 
     @Enumerated(EnumType.STRING)
     private ReportStatus status = ReportStatus.PENDING;
@@ -34,11 +33,12 @@ public class ReportUser extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private ReportReasonUser reportReasonUser;
 
-    public ReportUser(User reporterId, User reportedId, ReportReasonUser reportReasonUser, String content) {
-        this.reporterId = reporterId;
-        this.reportedId = reportedId;
-        this.reportReasonUser = reportReasonUser;
+    private String content;
+
+    public ReportUser(User reporter, User reported, ReportReasonUser reason, String content) {
+        this.reporter = reporter;
+        this.reported = reported;
+        this.reportReasonUser = reason;
         this.content = content;
     }
-
 }

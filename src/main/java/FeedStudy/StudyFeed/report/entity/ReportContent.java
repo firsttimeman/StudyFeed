@@ -14,7 +14,13 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "report_content")
+@Table(
+        name = "report_content",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"reporter_id", "feed_id"}),
+                @UniqueConstraint(columnNames = {"reporter_id", "squad_id"})
+        }
+)
 public class ReportContent extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reporter_id", nullable = false)

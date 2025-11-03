@@ -27,12 +27,15 @@ public enum ErrorCode {
     FILE_CANNOT_BE_UPLOADED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_CANNOT_BE_UPLOADED", "파일 업로드가 되지 않습니다."),
     INVALID_FILE_NAME(HttpStatus.BAD_REQUEST, "INVALID_FILE_NAME", "잘못된 파일 이름입니다."),
     IMAGE_URL_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "IMAGE_URL_GENERATION_FAILED", "이미지 URL 생성에 실패했습니다."),
+    IMAGE_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR,"IMAGE_NOT_FOUND", "이미지를 찾을수가 없습니다."),
+    UNAUTHORIZED_IMAGE_DELETE(HttpStatus.INTERNAL_SERVER_ERROR, "UNAUTHORIZED_IMAGE_DELETE", "이미지를 삭제할수가 없습니다."),
+    IMAGE_DELETE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "IMAGE_DELETE_FAILED", "이미지 삭제를 실패 했습니다."),
 
     // 피드 / 신고
     FEED_NOT_FOUND(HttpStatus.NOT_FOUND, "FEED_NOT_FOUND", "피드를 찾을 수 없습니다."),
     NOT_FEED_USER(HttpStatus.FORBIDDEN, "NOT_FEED_USER", "피드 작성자가 아닙니다."),
-    ALREADY_REPORTED(HttpStatus.BAD_REQUEST, "ALREADY_REPORTED", "이미 신고가 된 피드입니다."),
-    REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_NOT_FOUND", "신고 피드가 존재하지 않습니다."),
+    ALREADY_REPORTED(HttpStatus.BAD_REQUEST, "ALREADY_REPORTED", "이미 신고가 되었습니다."),
+    REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_NOT_FOUND", "신고 내역이 존재하지 않습니다."),
     BANNED_USER(HttpStatus.FORBIDDEN, "BANNED_USER", "차단된 유저입니다."),
 
     // 모임 조건
@@ -54,6 +57,9 @@ public enum ErrorCode {
     // 댓글
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_NOT_FOUND", "댓글이 존재하지 않습니다."),
     NOT_COMMENT_OWNER(HttpStatus.FORBIDDEN, "NOT_COMMENT_OWNER", "댓글 삭제 권한이 없습니다."),
+    INVALID_CONTENT(HttpStatus.NO_CONTENT, "INVALID_CONTENT", "가능한 댓글이 아닙니다."),
+    INVALID_PARENT_COMMENT(HttpStatus.BAD_REQUEST, "INVALID_PARENT_COMMENT", "부모 댓글이 존재하지 않습니다."),
+    COMMENT_DELETED_CANNOT_REPLY(HttpStatus.BAD_REQUEST, "COMMENT_DELETED_CANNOT_REPLY", "댓글을 달수가 없습니다."),
 
     // 스쿼드 (모임)
     SQUAD_NOT_FOUND(HttpStatus.NOT_FOUND, "SQUAD_NOT_FOUND", "해당 모임을 찾을 수 없습니다."),
@@ -76,6 +82,9 @@ public enum ErrorCode {
     NOT_CHAT_OWNER(HttpStatus.FORBIDDEN, "NOT_CHAT_OWNER", "메시지 삭제 권한이 없습니다."),
     IMAGE_UPLOAD_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "IMAGE_UPLOAD_LIMIT_EXCEEDED", "최대 10장까지 업로드할 수 있습니다."),
     SQUAD_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "SQUAD_MEMBER_NOT_FOUND", "모임 멤버를 찾을 수 없습니다."),
+    TIME_REQUIRED_WHEN_SPECIFIED(HttpStatus.BAD_REQUEST, "TIME_REQUIRED_WHEN_SPECIFIED", "시간을 지정하지 않았습니다."),
+    SQUAD_ALREADY_CLOSED(HttpStatus.BAD_REQUEST, "SQUAD_ALREADY_CLOSED", "모임이 모집을 종료했습니다."),
+    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "내부 에러입니다."),
 
     // 지역
     REGION_MAIN_NOT_FOUND(HttpStatus.NOT_FOUND, "REGION_MAIN_NOT_FOUND", "도/시 정보가 존재하지 않습니다."),
