@@ -30,8 +30,6 @@ public class SquadChat extends BaseEntity {
     @Column(columnDefinition = "text")
     private String message;
 
-    private String notice = null;
-
     @Enumerated(EnumType.STRING)
     private ChatType type;
 
@@ -39,9 +37,6 @@ public class SquadChat extends BaseEntity {
 
     @OneToMany(mappedBy = "squadChat", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SquadChatImage> images = new ArrayList<>();
-
-
-
 
     public static SquadChat text(User user, Squad squad, String message) {
         return SquadChat.builder()
@@ -65,11 +60,13 @@ public class SquadChat extends BaseEntity {
         return squadChat;
     }
 
+    // 공지를 간단안 A로 처리: message에 공지내용 + TEXT 타입
     public static SquadChat notice(User user, Squad squad, String noticeMessage) {
         return SquadChat.builder()
                 .user(user)
                 .squad(squad)
-                .notice(noticeMessage)
+                .message(noticeMessage)
+                .type(ChatType.NOTICE)
                 .deletable(false)
                 .build();
     }
@@ -81,11 +78,11 @@ public class SquadChat extends BaseEntity {
         }
     }
 
-
     public static SquadChat date(Squad squad, LocalDate date) {
         String[] days = { "월", "화", "수", "목", "금", "토", "일" };
         String format = String.format("%d. %02d. %02d (%s)",
-                date.getYear(), date.getMonthValue(), date.getDayOfMonth(), days[date.getDayOfWeek().getValue() - 1]);
+                date.getYear(), date.getMonthValue(), date.getDayOfMonth(),
+                days[date.getDayOfWeek().getValue() - 1]);
 
         return SquadChat.builder()
                 .squad(squad)
@@ -93,10 +90,7 @@ public class SquadChat extends BaseEntity {
                 .type(ChatType.DATE)
                 .deletable(false)
                 .build();
-
     }
-
-
 
     public void delete(){
         this.message = "삭제된 메세지 입니다.";

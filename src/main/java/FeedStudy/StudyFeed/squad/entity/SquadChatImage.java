@@ -13,11 +13,9 @@ import lombok.Setter;
 @Table(name = "squad_chat_image")
 public class SquadChatImage extends BaseEntity {
 
-    private String uniqueName; //UUID.jpg
-
-    private String originName; //abc.jpg
-
-    private String url; //  https://s3.aws.com/abc/cat.png
+    private String uniqueName; // UUID.jpg
+    private String originName; // abc.jpg
+    private String url;        // https://s3.aws.com/abc/cat.png
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "squad_chat_id")
@@ -34,8 +32,4 @@ public class SquadChatImage extends BaseEntity {
             this.squadChat = squadChat;
         }
     }
-
-
-
-
 }
