@@ -136,5 +136,14 @@ public class JwtUtil {
                 .getBody();
     }
 
+    public String getUserEmail(String token) {
+        try {
+            Claims claims = getClaimsFromToken(token);
+            return claims.getSubject(); // subject에 email이 들어가 있음
+        } catch (Exception e) {
+            throw new IllegalArgumentException("이메일 추출 실패: " + e.getMessage());
+        }
+    }
+
 
 }

@@ -64,7 +64,8 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/swagger-resources/**",
                                 "/v3/api-docs/**",
-                                "/webjars/**").permitAll()
+                                "/webjars/**",
+                                "/ws-stomp/**", "/ws/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .logout(logout -> logout.disable())
