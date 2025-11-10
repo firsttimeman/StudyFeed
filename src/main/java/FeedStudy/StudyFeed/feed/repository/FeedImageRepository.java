@@ -18,6 +18,15 @@ public interface FeedImageRepository  extends JpaRepository<FeedImage, Long> {
     List<FeedImage> findAllByImageUrlIn(Collection<String> urls);
 
 
+    @Query("""
+    SELECT fi
+    FROM FeedImage fi
+    JOIN FETCH fi.feed
+    WHERE fi.imageUrl IN :urls
+""")
+    List<FeedImage> findAllByImageUrlInWithFeed(@Param("urls") List<String> urls);
+
+
     List<FeedImage> findByFeedIdOrderByIdAsc(Long feedId);
 
     @Query("""

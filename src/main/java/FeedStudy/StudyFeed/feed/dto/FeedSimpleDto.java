@@ -45,7 +45,7 @@ public class FeedSimpleDto {
                 feed.getUser().getImageUrl(),
                 feed.getCategory(),
                 feed.getContent(),
-                imageUrls,             // 외부에서 미리 준비한 이미지 리스트
+                imageUrls,
                 likedByMe,
                 feed.getLikeCount(),
                 feed.getCommentCount(),

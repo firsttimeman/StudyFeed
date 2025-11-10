@@ -159,49 +159,79 @@ public class UserService {
         final String DEFAULT_IMAGE = "avatar_placeholder.png";
         final Set<String> ALLOWED = Set.of("image/jpeg", "image/png", "image/gif", "image/webp");
 
-        String oldUrl = user.getImageUrl();
+        String oldUrl = user.getImageUrl(); // 나중에 삭제할 후보
 
-        if(dto.isResetToDefault()) {
-            if(oldUrl != null && !oldUrl.isBlank() && !oldUrl.endsWith(DEFAULT_IMAGE)) {
-                String oldFileName = oldUrl.substring(oldUrl.lastIndexOf('/') + 1);
-                s3FileService.delete(oldFileName);
-            }
+        // 1) 기본 이미지로 되돌리기
+        if (dto.isResetToDefault()) {
+
             user.setImageUrl(DEFAULT_IMAGE);
-            return userRepository.save(user);
+            User saved = userRepository.save(user);
+
+            // 예전 이미지가 있고, 기본 이미지가 아니라면 → 커밋 이후 S3에서 삭제
+            if (oldUrl != null && !oldUrl.isBlank() && !oldUrl.endsWith(DEFAULT_IMAGE)
+                && TransactionSynchronizationManager.isSynchronizationActive()) {
+
+                String oldKey = s3FileService.extractKeyFromUrl(oldUrl);
+
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            s3FileService.delete(oldKey);
+                        } catch (Exception e) {
+                            log.warn("기존 프로필 이미지 삭제 실패: {}", oldKey, e);
+                        }
+                    }
+                });
+            }
+
+            return saved;
         }
 
+        // 2) 새 이미지 업로드
         MultipartFile file = dto.getProfileImage();
-        if(file == null || file.isEmpty()) return user;
+        if (file == null || file.isEmpty()) {
+            // 업로드할 파일이 없으면 그냥 현재 유저 상태 반환
+            return user;
+        }
 
         String contentType = file.getContentType();
-        if(contentType == null || !ALLOWED.contains(contentType.toLowerCase())) {
+        if (contentType == null || !ALLOWED.contains(contentType.toLowerCase())) {
             throw new IllegalArgumentException("JPEG/PNG/GIF/WEBP 형식의 이미지 파일만 업로드할 수 있어요.");
         }
 
         String original = file.getOriginalFilename();
         String ext = (original != null && original.contains(".")) ?
                 original.substring(original.lastIndexOf('.')) : "";
-        String newFileName = UUID.randomUUID() + ext;
 
+        // 👉 프로필 이미지는 따로 prefix를 두는 게 관리 편함
+        String newKey = String.format("profile/%d/%s%s", user.getId(), UUID.randomUUID(), ext);
 
+        // 새 이미지 S3 업로드 (여기는 어쩔 수 없이 업로드가 끝날 때까지는 기다려야 함)
+        String newUrl = s3FileService.uploadAndReturnUrl(file, newKey);
 
-        String newUrl = s3FileService.uploadAndReturnUrl(file, newFileName);
         user.setImageUrl(newUrl);
         User saved = userRepository.save(user);
 
+        // 3) 예전 이미지 S3 삭제는 afterCommit으로 (베스트 에포트)
+        if (oldUrl != null && !oldUrl.isBlank() && !oldUrl.endsWith(DEFAULT_IMAGE)
+            && TransactionSynchronizationManager.isSynchronizationActive()) {
 
+            String oldKey = s3FileService.extractKeyFromUrl(oldUrl);
 
-        if (oldUrl != null && !oldUrl.isBlank() && !oldUrl.endsWith(DEFAULT_IMAGE)) {
-            String oldFileName = oldUrl.substring(oldUrl.lastIndexOf('/') + 1);
-            try {
-                s3FileService.delete(oldFileName);
-            } catch (Exception e) {
-                log.warn("기존 이미지 삭제 실패: {}", oldFileName, e);
-            }
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        s3FileService.delete(oldKey);
+                    } catch (Exception e) {
+                        log.warn("기존 프로필 이미지 삭제 실패: {}", oldKey, e);
+                    }
+                }
+            });
         }
 
         return saved;
-
     }
 
     @Transactional

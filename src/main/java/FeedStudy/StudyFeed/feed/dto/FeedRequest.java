@@ -30,8 +30,8 @@ public class FeedRequest {
 
 
     @Schema(description = "피드에 추가할 이미지")
-    private List<MultipartFile> addedImages = new ArrayList<>();
+    private List<String> addedImagesUrls = new ArrayList<>();
 
     @Schema(description = "추후 피드 변경시 이미지")
-    private List<String> deletedImages = new ArrayList<>();
+    private List<String> deletedImagesUrls = new ArrayList<>();
 }

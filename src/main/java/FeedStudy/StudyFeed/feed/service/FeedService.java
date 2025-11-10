@@ -57,6 +57,80 @@ public class FeedService {
     private final FirebaseMessagingService firebaseMessagingService;
 
 
+    public List<String> uploadImagesInS3(Long userId, List<MultipartFile> files) {
+        List<String> urls = new ArrayList<>();
+
+        for (MultipartFile file : files) {
+            String original = Optional.ofNullable(file.getOriginalFilename()).orElse("image");
+            String ext = "";
+
+            int dotIdx = original.lastIndexOf('.');
+            if (dotIdx != -1) {
+                ext = original.substring(dotIdx); // ".png" 같은 확장자
+            }
+
+            String key = String.format(
+                    "feed/%d/%s%s",
+                    userId,
+                    UUID.randomUUID(),
+                    ext
+            );
+
+            String url = s3FileService.uploadAndReturnUrl(file, key);
+            urls.add(url);
+        }
+
+        return urls;
+    }
+
+
+    private Map<String, Boolean> deleteImagesInS3ByUrls(List<String> urls) {
+        Map<String, Boolean> result = new LinkedHashMap<>();
+        if (urls == null || urls.isEmpty()) return result;
+
+        for (String url : urls) {
+            if (url == null || url.isBlank()) continue;
+            try {
+                s3FileService.deleteByUrl(url);
+                result.put(url, true);
+            } catch (Exception e) {
+                log.warn("S3 이미지 삭제 실패. url={}", url, e);
+                result.put(url, false);
+            }
+        }
+        return result;
+    }
+
+    private List<String> deleteImagesFromDb(Feed feed, List<String> deletedUrls) {
+
+        List<String> distinct = deletedUrls.stream()
+                .filter(Objects::nonNull)
+                .filter(url -> !url.isBlank())
+                .distinct()
+                .toList();
+
+        if(distinct.isEmpty()) return List.of();
+
+        List<FeedImage> targets = feedImageRepository.findAllByImageUrlInWithFeed(distinct);
+        if(targets.size() != distinct.size()) {
+            throw new FeedException(ErrorCode.IMAGE_NOT_FOUND);
+        }
+
+        boolean allOwned = targets.stream()
+                .allMatch(img -> img.getFeed().getId().equals(feed.getId()));
+        if (!allOwned) {
+            throw new FeedException(ErrorCode.UNAUTHORIZED_IMAGE_DELETE);
+        }
+
+        feedImageRepository.deleteAllInBatch(targets);
+
+        return targets.stream()
+                .map(FeedImage::getImageUrl)
+                .toList();
+
+    }
+
+
 
     @Transactional
     public FeedDetailResponse create(User user, FeedRequest request) {
@@ -64,8 +138,8 @@ public class FeedService {
         Feed feed = feedRepository.save(Feed.create(user, request.getContent(), request.getCategory()));
 
         // 2) 이미지 업로드/연결
-        if (request.getAddedImages() != null && !request.getAddedImages().isEmpty()) {
-            saveFeedImages(feed, request.getAddedImages());
+        if (request.getAddedImagesUrls() != null && !request.getAddedImagesUrls().isEmpty()) {
+            saveFeedImages(feed, request.getAddedImagesUrls());
         }
 
         // 3) 방금 생성한 피드 응답
@@ -274,21 +348,34 @@ public class FeedService {
 
     @Transactional
     public void update(User user, FeedRequest request, Long feedId) {
+        // 0) 피드 조회 & 권한 체크
         Feed feed = feedRepository.findById(feedId)
                 .orElseThrow(() -> new FeedException(ErrorCode.FEED_NOT_FOUND));
         validateOwner(user, feed);
 
-        // 1) 추가 먼저(내부에서 보상 삭제 처리)
-        if (request.getAddedImages() != null && !request.getAddedImages().isEmpty()) {
-            saveFeedImages(feed, request.getAddedImages());
-        }
-
-        // 2) 본문/카테고리 갱신
+        // 1) 본문 / 카테고리 먼저 갱신
         feed.update(request.getContent(), request.getCategory());
 
-        // 3) 삭제는 마지막 (DB 먼저 → afterCommit S3 삭제로 구현해두면 더 안전)
-        if (request.getDeletedImages() != null && !request.getDeletedImages().isEmpty()) {
-            deleteImages(feed, request.getDeletedImages());
+        // 2) 추가된 이미지 URL → FeedImage로만 저장 (S3 업로드는 이미 끝났다고 가정)
+        if (request.getAddedImagesUrls() != null && !request.getAddedImagesUrls().isEmpty()) {
+            saveFeedImages(feed, request.getAddedImagesUrls());
+        }
+
+        // 3) 삭제된 이미지 URL → DB에서 FeedImage 삭제 + afterCommit 으로 S3 삭제
+        if (request.getDeletedImagesUrls() != null && !request.getDeletedImagesUrls().isEmpty()) {
+
+            // (1) 트랜잭션 안에서 DB만 삭제하고, 실제 삭제할 URL 목록 확보
+            List<String> urlsToDelete = deleteImagesFromDb(feed, request.getDeletedImagesUrls());
+
+            // (2) 커밋 후 S3 삭제 (베스트 에포트)
+            if (!urlsToDelete.isEmpty() && TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        deleteImagesInS3ByUrls(urlsToDelete);
+                    }
+                });
+            }
         }
     }
 
@@ -299,27 +386,22 @@ public class FeedService {
                 .orElseThrow(() -> new FeedException(ErrorCode.FEED_NOT_FOUND));
         validateOwner(user, feed);
 
-        // 1) S3 키 미리 추출(트랜잭션 안에서 조회)
-        List<String> keys = feed.getImages().stream()
+        // 1) 트랜잭션 안에서 이미지 URL들만 추출
+        List<String> imageUrls = feed.getImages().stream()
                 .map(FeedImage::getImageUrl)
+                .filter(Objects::nonNull)
                 .distinct()
-                .map(s3FileService::extractKeyFromUrl)
                 .toList();
 
-        // 2) 먼저 DB에서 피드 삭제 (orphanRemoval로 이미지도 같이 삭제)
+        // 2) 먼저 DB에서 피드 삭제 (orphanRemoval로 feed_image도 같이 삭제)
         feedRepository.delete(feed);
 
-        // 3) 커밋 후 S3 삭제 (베스트 에포트)
-        if (!keys.isEmpty() && TransactionSynchronizationManager.isSynchronizationActive()) {
+        // 3) 커밋 후 S3 삭제 (베스트 에포트 + S3 전용 헬퍼 사용)
+        if (!imageUrls.isEmpty() && TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override public void afterCommit() {
-                    for (String key : keys) {
-                        try {
-                            s3FileService.delete(key);
-                        } catch (Exception e) {
-                            log.warn("S3 orphan cleanup failed during feed delete. key={}", key, e);
-                        }
-                    }
+                @Override
+                public void afterCommit() {
+                    deleteImagesInS3ByUrls(imageUrls);
                 }
             });
         }
@@ -396,107 +478,75 @@ public class FeedService {
     }
 
 
-    private void saveFeedImages(Feed feed, List<MultipartFile> images) {
-        List<FeedImage> toPersist = new ArrayList<>();
-        List<String> uploadedKeys = new ArrayList<>();
+    private void saveFeedImages(Feed feed, List<String> imagesUrls) {
 
-        try {
-            for (MultipartFile image : images) {
-                String originalFilename = image.getOriginalFilename();
-                if (originalFilename == null || !originalFilename.contains(".")) {
-                    throw new FeedException(ErrorCode.INVALID_FILE_NAME);
-                }
-
-                // 파일 검증(컨텐츠 타입/크기 제한) 추가를 권장
-                // e.g. validateMimeSize(image);
-
-                FeedImage feedImage = FeedImage.ofOriginalName(originalFilename); // 팩토리 사용 권장
-                String key = feedImage.getUniqueName();
-
-                s3FileService.upload(image, key);
-                uploadedKeys.add(key);
-
-                String imgUrl = s3FileService.getFullUrl(key);
-                if (imgUrl == null) {
-                    throw new FeedException(ErrorCode.IMAGE_URL_GENERATION_FAILED);
-                }
-                feedImage.setImageUrl(imgUrl);
-
-                toPersist.add(feedImage);
-            }
-
-            // 연관만 연결하면 캐스케이드로 저장됨
-            feed.addImages(toPersist);
-
-            // 만약 명시 저장을 원하면 아래 한 줄 유지(중복 저장은 아님)
-            // feedImageRepository.saveAll(toPersist);
-
-        } catch (Exception e) {
-            // 보상 삭제: 이미 업로드 완료된 키들만 제거
-            for (String key : uploadedKeys) {
-                try {
-                    s3FileService.delete(key);
-                } catch (Exception deleteEx) {
-                    log.warn("Failed to delete uploaded key during compensation: {}", key, deleteEx);
-                }
-            }
-            throw e;
-        }
-    }
-
-
-    private void deleteImages(Feed feed, List<String> deletedUrls) {
-        List<String> distinct = deletedUrls.stream().distinct().toList();
-
-        // 1) 존재/소유권 검증
-        List<FeedImage> targets = feedImageRepository.findAllByImageUrlIn(distinct);
-        if (targets.size() != distinct.size()) {
-            throw new FeedException(ErrorCode.IMAGE_NOT_FOUND);
-        }
-        boolean allOwned = targets.stream()
-                .allMatch(img -> img.getFeed().getId().equals(feed.getId()));
-        if (!allOwned) throw new FeedException(ErrorCode.UNAUTHORIZED_IMAGE_DELETE);
-
-        // 2) S3 키 추출(미리)
-        List<String> keys = targets.stream()
-                .map(img -> s3FileService.extractKeyFromUrl(img.getImageUrl()))
+        List<FeedImage> images = imagesUrls.stream()
+                .filter(url -> url != null && !url.isBlank())
+                .map(url -> {
+                    FeedImage feedImage = FeedImage.fromUrl(url);
+                    feedImage.initFeed(feed);
+                    return feedImage;
+                })
                 .toList();
 
-        // 3) 먼저 DB에서 제거 (트랜잭션 내)
-        feedImageRepository.deleteAllInBatch(targets);
+        feed.addImages(images);
 
-        // 4) 커밋 후 S3 삭제 (베스트 에포트)
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override public void afterCommit() {
-                // 가능하면 멀티-딜리트 API 사용, 아니면 loop
-                for (String key : keys) {
-                    try {
-                        s3FileService.delete(key);
-                    } catch (Exception e) {
-                        // 남아도 사용자 화면은 이미 정리된 상태. 운영 로그만 남김
-                        log.warn("S3 orphan cleanup failed: {}", key, e);
-                    }
-                }
-            }
-        });
+
     }
 
 
+//    private void deleteImages(Feed feed, List<String> deletedUrls) {
+//        List<String> distinct = deletedUrls.stream().distinct().toList();
+//
+//        // 1) 존재/소유권 검증
+//        List<FeedImage> targets = feedImageRepository.findAllByImageUrlIn(distinct);
+//        if (targets.size() != distinct.size()) {
+//            throw new FeedException(ErrorCode.IMAGE_NOT_FOUND);
+//        }
+//        boolean allOwned = targets.stream()
+//                .allMatch(img -> img.getFeed().getId().equals(feed.getId()));
+//        if (!allOwned) throw new FeedException(ErrorCode.UNAUTHORIZED_IMAGE_DELETE);
+//
+//        // 2) S3 키 추출(미리)
+//        List<String> keys = targets.stream()
+//                .map(img -> s3FileService.extractKeyFromUrl(img.getImageUrl()))
+//                .toList();
+//
+//        // 3) 먼저 DB에서 제거 (트랜잭션 내)
+//        feedImageRepository.deleteAllInBatch(targets);
+//
+//        // 4) 커밋 후 S3 삭제 (베스트 에포트)
+//        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+//            @Override public void afterCommit() {
+//                // 가능하면 멀티-딜리트 API 사용, 아니면 loop
+//                for (String key : keys) {
+//                    try {
+//                        s3FileService.delete(key);
+//                    } catch (Exception e) {
+//                        // 남아도 사용자 화면은 이미 정리된 상태. 운영 로그만 남김
+//                        log.warn("S3 orphan cleanup failed: {}", key, e);
+//                    }
+//                }
+//            }
+//        });
+//    }
 
-    private boolean createFeedLikeSafely(Feed feed, User user)  {
 
-        try {
-            feedLikeRepository.save(new FeedLike(user, feed));
-            return true;
-        } catch (DataIntegrityViolationException e) {
-            return false;
-        }
 
-    }
-
-    private boolean decreaseFeedLikeSafely(Feed feed, User user) {
-        return feedLikeRepository.deleteByUserAndFeed(user, feed) > 0;
-    }
+//    private boolean createFeedLikeSafely(Feed feed, User user)  {
+//
+//        try {
+//            feedLikeRepository.save(new FeedLike(user, feed));
+//            return true;
+//        } catch (DataIntegrityViolationException e) {
+//            return false;
+//        }
+//
+//    }
+//
+//    private boolean decreaseFeedLikeSafely(Feed feed, User user) {
+//        return feedLikeRepository.deleteByUserAndFeed(user, feed) > 0;
+//    }
 
     private void sendLikePush(Feed feed) {
         String fcmToken = feed.getUser().getFcmToken();
