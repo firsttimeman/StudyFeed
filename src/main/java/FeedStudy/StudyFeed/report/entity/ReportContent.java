@@ -7,13 +7,13 @@ import FeedStudy.StudyFeed.report.type.ReportReasonContent;
 import FeedStudy.StudyFeed.squad.entity.Squad;
 import FeedStudy.StudyFeed.user.entity.User;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
         name = "report_content",
         uniqueConstraints = {
@@ -22,25 +22,45 @@ import lombok.*;
         }
 )
 public class ReportContent extends BaseEntity {
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reporter_id", nullable = false)
     private User reporter;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "feed_id")
-    private Feed feed; // nullable: feed or squad 둘 중 하나만
+    private Feed feed;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "squad_id")
     private Squad squad;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private ReportReasonContent reason;
 
+    @Column(length = 300)
     private String content;
 
     @Enumerated(EnumType.STRING)
-    private ReportStatus status = ReportStatus.PENDING;
+    @Column(nullable = false)
+    private ReportStatus status;
+
+    private ReportContent(
+            User reporter,
+            Feed feed,
+            Squad squad,
+            ReportReasonContent reason,
+            String content,
+            ReportStatus status
+    ) {
+        this.reporter = reporter;
+        this.feed = feed;
+        this.squad = squad;
+        this.reason = reason;
+        this.content = content;
+        this.status = status;
+    }
 
     public static ReportContent ofFeed(User reporter, Feed feed, ReportReasonContent reason, String content) {
         return new ReportContent(reporter, feed, null, reason, content, ReportStatus.PENDING);
@@ -50,5 +70,7 @@ public class ReportContent extends BaseEntity {
         return new ReportContent(reporter, null, squad, reason, content, ReportStatus.PENDING);
     }
 
-
+    public void changeStatus(ReportStatus status) {
+        this.status = status;
+    }
 }
