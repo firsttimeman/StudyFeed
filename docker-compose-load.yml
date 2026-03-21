@@ -1,0 +1,9 @@
+services:
+  k6:
+    image: grafana/k6:latest
+    volumes:
+      - ./k6:/scripts:ro
+    ports:
+      - "5665:5665"
+    environment:
+      - K6_WEB_DASHBOARD=true
