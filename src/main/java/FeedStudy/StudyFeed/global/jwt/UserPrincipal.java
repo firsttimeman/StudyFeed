@@ -1,6 +1,7 @@
 package FeedStudy.StudyFeed.global.jwt;
 
 import FeedStudy.StudyFeed.user.entity.User;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -10,6 +11,7 @@ import java.util.Collection;
 import java.util.List;
 
 @RequiredArgsConstructor
+@Getter
 public class UserPrincipal implements UserDetails {
 
     private final User user;
@@ -49,7 +51,5 @@ public class UserPrincipal implements UserDetails {
         return true;
     }
 
-    public User getUser() {
-        return user;
-    }
+
 }
