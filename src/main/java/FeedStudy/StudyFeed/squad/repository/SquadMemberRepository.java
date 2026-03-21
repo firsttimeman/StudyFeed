@@ -1,7 +1,9 @@
 // src/main/java/FeedStudy/StudyFeed/squad/repository/SquadMemberRepository.java
 package FeedStudy.StudyFeed.squad.repository;
 
+import FeedStudy.StudyFeed.global.type.Gender;
 import FeedStudy.StudyFeed.global.type.MembershipStatus;
+import FeedStudy.StudyFeed.squad.dto.PendingApplicantDto;
 import FeedStudy.StudyFeed.squad.entity.Squad;
 import FeedStudy.StudyFeed.squad.entity.SquadMember;
 import FeedStudy.StudyFeed.user.dto.UserSimpleDto;
@@ -25,6 +27,29 @@ public interface SquadMemberRepository extends JpaRepository<SquadMember, Long> 
     // JOINED 인원 수 (정원 체크용)
     long countBySquadIdAndMembershipStatus(Long squadId, MembershipStatus status);
 
+
+    @Modifying
+    @Query("""
+update SquadMember m
+   set m.membershipStatus = FeedStudy.StudyFeed.global.type.MembershipStatus.JOINED
+ where m.squad.id = :squadId
+   and m.user.id = :userId
+   and m.membershipStatus = FeedStudy.StudyFeed.global.type.MembershipStatus.LEFT
+""")
+    int rejoinIfLeft(@Param("squadId") Long squadId,
+                     @Param("userId") Long userId);
+
+    @Modifying
+    @Query("""
+update SquadMember m
+   set m.membershipStatus = FeedStudy.StudyFeed.global.type.MembershipStatus.PENDING
+ where m.squad.id = :squadId
+   and m.user.id = :userId
+   and m.membershipStatus = FeedStudy.StudyFeed.global.type.MembershipStatus.LEFT
+""")
+    int requestAgainIfLeft(@Param("squadId") Long squadId,
+                           @Param("userId") Long userId);
+
     @Query("""
     select new FeedStudy.StudyFeed.user.dto.UserSimpleDto(
         u.nickName,
@@ -39,13 +64,7 @@ public interface SquadMemberRepository extends JpaRepository<SquadMember, Long> 
     """)
     List<UserSimpleDto> findJoinedParticipants(@Param("squadId") Long squadId);
 
-    @Query("""
-    select case when count(m) > 0 then true else false end
-    from SquadMember m
-    where m.squad.id = :squadId
-      and m.membershipStatus = FeedStudy.StudyFeed.global.type.MembershipStatus.PENDING
-    """)
-    boolean existsPending(@Param("squadId") Long squadId);
+    boolean existsBySquadIdAndMembershipStatus(Long squadId, MembershipStatus membershipStatus);
 
     @Query("""
     select m.membershipStatus
@@ -58,8 +77,8 @@ public interface SquadMemberRepository extends JpaRepository<SquadMember, Long> 
 
 
     @Query("""
-select new FeedStudy.StudyFeed.user.dto.UserSimpleDto(
-    u.nickName, u.imageUrl, u.gender, u.birthDate
+select new FeedStudy.StudyFeed.squad.dto.PendingApplicantDto(
+    u.nickName, u.imageUrl, u.gender, u.birthDate, u.email
 )
 from SquadMember m
 join m.user u
@@ -67,47 +86,35 @@ where m.squad.id = :squadId
   and m.membershipStatus = FeedStudy.StudyFeed.global.type.MembershipStatus.PENDING
 order by m.id asc
 """)
-    List<UserSimpleDto> findPendingApplicants(@Param("squadId") Long squadId);
+    List<PendingApplicantDto> findPendingApplicants(@Param("squadId") Long squadId);
 
-    // 푸시 알림용 토큰 (JOINED & 알림 ON & 본인 제외)
-    @Query("""
-        select u.fcmToken from SquadMember m
-        join m.user u
-        where m.squad.id = :squadId
-          and m.membershipStatus = FeedStudy.StudyFeed.global.type.MembershipStatus.JOINED
-          and u.squadChatAlarm = true
-          and u.fcmToken is not null
-          and u.id <> :excludeUserId
-    """)
-    List<String> findJoinedFcmTokens(@Param("squadId") Long squadId,
-                                     @Param("excludeUserId") Long excludeUserId);
 
-    // 연령 제한 변경 시 충돌 여부 (JOINED 인원 중 범위 밖 존재?)
+
     @Query("""
-        select case when count(m) > 0 then true else false end
-        from SquadMember m
-        where m.squad.id = :squadId
-          and m.membershipStatus = FeedStudy.StudyFeed.global.type.MembershipStatus.JOINED
-          and m.user.id <> :ownerId
-          and (m.user.birthDate < :minBirth or m.user.birthDate > :maxBirth)
-    """)
+    select (count(m) > 0)
+    from SquadMember m
+    where m.squad.id = :squadId
+      and m.membershipStatus = :status
+      and m.user.id <> :ownerId
+      and (m.user.birthDate < :minBirth or m.user.birthDate > :maxBirth)
+""")
     boolean existsJoinedOutOfAge(@Param("squadId") Long squadId,
                                  @Param("ownerId") Long ownerId,
+                                 @Param("status") MembershipStatus status,
                                  @Param("minBirth") LocalDate minBirth,
                                  @Param("maxBirth") LocalDate maxBirth);
 
 
-// 성별 제한 변경 시 충돌 여부 (JOINED 인원 중 요구 성별과 다른 사람 존재?)
     @Query("""
-    select case when count(m) > 0 then true else false end
-    from SquadMember m
-    where m.squad.id = :squadId
-      and m.membershipStatus = FeedStudy.StudyFeed.global.type.MembershipStatus.JOINED
-      and (:requiredGenderEnumName <> 'ALL' and m.user.gender <> :requiredGenderName)
+select (count(m) > 0)
+from SquadMember m
+where m.squad.id = :squadId
+  and m.membershipStatus = :status
+  and m.user.gender <> :requiredGender
 """)
     boolean existsJoinedGenderConflict(@Param("squadId") Long squadId,
-                                       @Param("requiredGenderEnumName") String requiredGenderEnumName, // Gender.name()
-                                       @Param("requiredGenderName") String requiredGenderName);       // "남성" or "여성"
+                                       @Param("status") MembershipStatus status,
+                                       @Param("requiredGender") Gender requiredGender);
 
 
     @Modifying
