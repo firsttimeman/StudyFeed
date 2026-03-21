@@ -28,45 +28,99 @@ public class ReportService {
     private final FeedRepository feedRepository;
     private final SquadRepository squadRepository;
 
-    public void reportUser(Long reporterId, Long reportedId, ReportRequest req) {
-        User reporter = userRepository.findById(reporterId)
-                .orElseThrow(() -> new ReportException(ErrorCode.USER_NOT_FOUND));
+    public void reportUser(User reporter, Long reportedId, ReportRequest req) {
         User reported = userRepository.findById(reportedId)
                 .orElseThrow(() -> new ReportException(ErrorCode.USER_NOT_FOUND));
 
-        if (reportUserRepository.existsByReporterAndReported(reporter, reported))
-            throw new ReportException(ErrorCode.ALREADY_REPORTED);
+        if (reporter.getId().equals(reported.getId())) {
+            throw new ReportException(ErrorCode.SELF_REPORT_NOT_ALLOWED);
+        }
 
-        ReportUser report = new ReportUser(reporter, reported, req.getReportReasonUser(), req.getContent());
+        if (req.getReportReasonUser() == null) {
+            throw new ReportException(ErrorCode.INVALID_REPORT_REASON);
+        }
+
+        if (reportUserRepository.existsByReporterAndReported(reporter, reported)) {
+            throw new ReportException(ErrorCode.ALREADY_REPORTED);
+        }
+
+        String content = normalizeContent(req.getContent());
+
+        ReportUser report = new ReportUser(
+                reporter,
+                reported,
+                req.getReportReasonUser(),
+                content
+        );
+
         userRepository.increaseReportCount(reported.getId());
         reportUserRepository.save(report);
     }
 
-    public void reportFeed(Long reporterId, Long feedId, ReportRequest req) {
-        User reporter = userRepository.findById(reporterId)
-                .orElseThrow(() -> new ReportException(ErrorCode.USER_NOT_FOUND));
+    public void reportFeed(User reporter, Long feedId, ReportRequest req) {
         Feed feed = feedRepository.findById(feedId)
                 .orElseThrow(() -> new ReportException(ErrorCode.FEED_NOT_FOUND));
 
-        if (reportContentRepository.existsByReporterAndFeed(reporter, feed))
-            throw new ReportException(ErrorCode.ALREADY_REPORTED);
+        if (feed.getUser() != null && feed.getUser().getId().equals(reporter.getId())) {
+            throw new ReportException(ErrorCode.SELF_REPORT_NOT_ALLOWED);
+        }
 
-        ReportContent report = ReportContent.ofFeed(reporter, feed, req.getReportReasonContent(), req.getContent());
+        if (req.getReportReasonContent() == null) {
+            throw new ReportException(ErrorCode.INVALID_REPORT_REASON);
+        }
+
+        if (reportContentRepository.existsByReporterAndFeed(reporter, feed)) {
+            throw new ReportException(ErrorCode.ALREADY_REPORTED);
+        }
+
+        String content = normalizeContent(req.getContent());
+
+        ReportContent report = ReportContent.ofFeed(
+                reporter,
+                feed,
+                req.getReportReasonContent(),
+                content
+        );
+
         feedRepository.increaseReportCount(feed.getId());
         reportContentRepository.save(report);
     }
 
-    public void reportSquad(Long reporterId, Long squadId, ReportRequest req) {
-        User reporter = userRepository.findById(reporterId)
-                .orElseThrow(() -> new ReportException(ErrorCode.USER_NOT_FOUND));
+    public void reportSquad(User reporter, Long squadId, ReportRequest req) {
         Squad squad = squadRepository.findById(squadId)
                 .orElseThrow(() -> new ReportException(ErrorCode.SQUAD_NOT_FOUND));
 
-        if (reportContentRepository.existsByReporterAndSquad(reporter, squad))
-            throw new ReportException(ErrorCode.ALREADY_REPORTED);
+        if (squad.getUser() != null && squad.getUser().getId().equals(reporter.getId())) {
+            throw new ReportException(ErrorCode.SELF_REPORT_NOT_ALLOWED);
+        }
 
-        ReportContent report = ReportContent.ofSquad(reporter, squad, req.getReportReasonContent(), req.getContent());
+        if (req.getReportReasonContent() == null) {
+            throw new ReportException(ErrorCode.INVALID_REPORT_REASON);
+        }
+
+        if (reportContentRepository.existsByReporterAndSquad(reporter, squad)) {
+            throw new ReportException(ErrorCode.ALREADY_REPORTED);
+        }
+
+        String content = normalizeContent(req.getContent());
+
+        ReportContent report = ReportContent.ofSquad(
+                reporter,
+                squad,
+                req.getReportReasonContent(),
+                content
+        );
+
         squadRepository.increaseReportCount(squad.getId());
         reportContentRepository.save(report);
+    }
+
+    private String normalizeContent(String content) {
+        if (content == null) {
+            return null;
+        }
+
+        String trimmed = content.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }
