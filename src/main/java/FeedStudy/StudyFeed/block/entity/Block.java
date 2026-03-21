@@ -3,18 +3,17 @@ package FeedStudy.StudyFeed.block.entity;
 import FeedStudy.StudyFeed.global.entity.BaseEntity;
 import FeedStudy.StudyFeed.user.entity.User;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Getter
-@Setter
 @Table(
         name = "user_block",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"blocker_id", "blocked_id"})
+        uniqueConstraints = @UniqueConstraint(columnNames = {"blocker_id", "blocked_id"})
 )
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Block extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -29,5 +28,4 @@ public class Block extends BaseEntity {
         this.blocker = blocker;
         this.blocked = blocked;
     }
-
 }
