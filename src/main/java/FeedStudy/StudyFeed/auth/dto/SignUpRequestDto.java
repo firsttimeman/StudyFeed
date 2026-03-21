@@ -1,5 +1,6 @@
 package FeedStudy.StudyFeed.auth.dto;
 
+import FeedStudy.StudyFeed.global.type.Gender;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -21,17 +22,13 @@ public class SignUpRequestDto {
     @Schema(description = "유저 이메일")
     private String email;
 
-    @Schema(description = "소셜 종류")
-    private String providerType;
 
-    @Schema(description = "소셜 고유 아이디")
-    private String providerId;
+    @NotBlank(message = "비밀번호를 입력하셔야 합니다.")
+    @Size(min = 8, max = 20, message = "비밀번호는 8자 이상 20자 이하이어야 합니다.")
+    private String password;
 
-    @Schema(description = "통신사")
-    private String telecom;
-
-    @Schema(description = "성별")
-    private String gender;
+    @NotNull(message = "성별을 선택해주세요.")
+    private Gender gender;
 
     @Past(message = "과거 날짜여야 합니다.")
     @Schema(description = "생년월일")
@@ -40,7 +37,6 @@ public class SignUpRequestDto {
     @Schema(description = "이벤트 수신 여부")
     private String receiveEvent;
 
-    @Schema(description = "이메일 인증 암호")
-    private String authcode;
+
 
 }
