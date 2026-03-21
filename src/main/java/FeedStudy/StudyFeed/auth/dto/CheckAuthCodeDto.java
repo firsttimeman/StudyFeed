@@ -1,18 +1,13 @@
-package FeedStudy.StudyFeed.user.dto;
+package FeedStudy.StudyFeed.auth.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.*;
-import lombok.AllArgsConstructor;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.time.LocalDate;
 
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Schema(description = "인증번호 검증 dto")
 public class CheckAuthCodeDto {
 
@@ -22,6 +17,6 @@ public class CheckAuthCodeDto {
     private String email;
 
     @Schema(description = "이메일 인증 암호")
-    private String code;
+    private String authCode;
 
 }
