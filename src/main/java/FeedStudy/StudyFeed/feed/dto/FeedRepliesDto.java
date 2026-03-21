@@ -1,6 +1,5 @@
 package FeedStudy.StudyFeed.feed.dto;
 
-import FeedStudy.StudyFeed.feed.entity.FeedComment;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
