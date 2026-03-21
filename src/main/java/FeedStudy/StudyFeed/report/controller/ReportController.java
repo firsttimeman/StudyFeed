@@ -24,30 +24,36 @@ public class ReportController {
     @Operation(summary = "사용자 신고", description = "특정 사용자를 신고합니다. 신고 사유와 세부 내용을 포함해야 합니다.")
     @PostMapping("/user")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> reportUser(  @Parameter(hidden = true) @AuthenticationPrincipal User user,
-                                          @Parameter(description = "신고 대상 사용자 ID") @RequestParam Long reportedId,
-                                          @Valid @RequestBody ReportRequest req) {
-        reportService.reportUser(user.getId(), reportedId, req);
+    public ResponseEntity<Void> reportUser(
+            @Parameter(hidden = true) @AuthenticationPrincipal(expression = "user") User user,
+            @Parameter(description = "신고 대상 사용자 ID") @RequestParam Long reportedId,
+            @Valid @RequestBody ReportRequest req
+    ) {
+        reportService.reportUser(user, reportedId, req);
         return ResponseEntity.ok().build();
     }
 
     @Operation(summary = "스쿼드 신고", description = "특정 스쿼드를 신고합니다. 신고 사유와 세부 내용을 포함해야 합니다.")
-    @PostMapping("/reportSquad")
+    @PostMapping("/squad")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> reportSquad( @Parameter(hidden = true) @AuthenticationPrincipal User user,
-                                          @Parameter(description = "신고 대상 스쿼드 ID") @RequestParam Long squadId,
-                                          @Valid @RequestBody ReportRequest req) {
-        reportService.reportSquad(user.getId(), squadId, req);
+    public ResponseEntity<Void> reportSquad(
+            @Parameter(hidden = true) @AuthenticationPrincipal(expression = "user") User user,
+            @Parameter(description = "신고 대상 스쿼드 ID") @RequestParam Long squadId,
+            @Valid @RequestBody ReportRequest req
+    ) {
+        reportService.reportSquad(user, squadId, req);
         return ResponseEntity.ok().build();
     }
 
     @Operation(summary = "피드 신고", description = "특정 피드를 신고합니다. 신고 사유와 세부 내용을 포함해야 합니다.")
-    @PostMapping("/reportFeed")
+    @PostMapping("/feed")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> reportFeed( @Parameter(hidden = true) @AuthenticationPrincipal User user,
-                                         @Parameter(description = "신고 대상 피드 ID") @RequestParam Long feedId,
-                                         @Valid @RequestBody ReportRequest req) {
-        reportService.reportFeed(user.getId(), feedId, req);
+    public ResponseEntity<Void> reportFeed(
+            @Parameter(hidden = true) @AuthenticationPrincipal(expression = "user") User user,
+            @Parameter(description = "신고 대상 피드 ID") @RequestParam Long feedId,
+            @Valid @RequestBody ReportRequest req
+    ) {
+        reportService.reportFeed(user, feedId, req);
         return ResponseEntity.ok().build();
     }
 }
