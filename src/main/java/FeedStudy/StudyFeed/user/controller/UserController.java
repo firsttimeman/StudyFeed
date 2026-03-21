@@ -1,12 +1,14 @@
 package FeedStudy.StudyFeed.user.controller;
 
-import FeedStudy.StudyFeed.user.dto.*;
+import FeedStudy.StudyFeed.user.dto.DescriptionRequestDto;
+import FeedStudy.StudyFeed.user.dto.NickNameCheckResponse;
+import FeedStudy.StudyFeed.user.dto.ProfileImageUpdateDto;
 import FeedStudy.StudyFeed.user.entity.User;
 import FeedStudy.StudyFeed.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -24,30 +26,33 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
- 
 
     @Operation(summary = "랜덤 닉네임 생성")
     @GetMapping("/generate_nickname")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<String> makeNickName(@AuthenticationPrincipal User user) {
-        userService.makeNickName(user);
-        return ResponseEntity.ok("NickName 생성 완료");
+    public ResponseEntity<Map<String, String>> makeNickName(
+            @AuthenticationPrincipal(expression = "user") User user
+    ) {
+        String nickname = userService.makeNickName(user);
+        return ResponseEntity.ok(Map.of("nickname", nickname));
     }
 
     @Operation(summary = "닉네임 수정")
     @PutMapping("/update_nickname")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<String> updateNickName(
-            @Parameter(hidden = true) @AuthenticationPrincipal User user,
-            @Parameter(description = "수정할 닉네임") @RequestParam String nickname) {
+    public ResponseEntity<Map<String, String>> updateNickName(
+            @Parameter(hidden = true) @AuthenticationPrincipal(expression = "user") User user,
+            @Parameter(description = "수정할 닉네임") @RequestParam String nickname
+    ) {
         userService.updateNickname(user, nickname);
-        return ResponseEntity.ok("NickName 적용 완료");
+        return ResponseEntity.ok(Map.of("nickname", user.getNickName()));
     }
 
     @Operation(summary = "닉네임 제한 확인")
     @GetMapping("/limit_nickname")
-    public ResponseEntity<?> limitName(
-            @Parameter(description = "제한할 닉네임") @RequestParam String nickname) {
+    public ResponseEntity<NickNameCheckResponse> limitName(
+            @Parameter(description = "확인할 닉네임") @RequestParam String nickname
+    ) {
         NickNameCheckResponse resp = userService.checkNickname(nickname);
         return ResponseEntity.ok(resp);
     }
@@ -56,69 +61,54 @@ public class UserController {
     @GetMapping("/has_nickname")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<Boolean> hasNickName(
-            @Parameter(hidden = true) @AuthenticationPrincipal User user) {
+            @Parameter(hidden = true) @AuthenticationPrincipal(expression = "user") User user
+    ) {
         return ResponseEntity.ok(userService.hasNickName(user));
     }
 
-    @Operation(summary = "FCM 토큰 재발급")
-    @PutMapping("/update_fcm")
-    @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<String> refreshFcmToken(
-            @RequestBody FcmTokenRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal User user) {
-
-        System.out.println("update FCM token: " + request.fcmToken());
-        userService.fcmTokenRefresh(user, request.fcmToken());
-        return ResponseEntity.ok("FCM 토큰이 재발급 되었습니다.");
-    }
-
-
-
     @Operation(summary = "Access Token 유효성 검사")
     @GetMapping("/check")
-    // @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> checkAccessToken(
-            @Parameter(hidden = true) @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok().body(userService.getNickname(user));
+    public ResponseEntity<Map<String, String>> checkAccessToken(
+            @Parameter(hidden = true) @AuthenticationPrincipal(expression = "user") User user
+    ) {
+        return ResponseEntity.ok(userService.getNickname(user));
     }
 
     @Operation(summary = "유저 자기소개 수정")
     @PutMapping("/modify_description")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> modifyDescription(
-            @Parameter(hidden = true) @AuthenticationPrincipal User user,
-            @RequestBody DescriptionRequestDto dto) {
-        User user1 = userService.modifyDescription(dto, user);
-        return ResponseEntity.ok(Map.of("description", user1.getDescription()));
+    public ResponseEntity<Map<String, String>> modifyDescription(
+            @Parameter(hidden = true) @AuthenticationPrincipal(expression = "user") User user,
+            @Valid @RequestBody DescriptionRequestDto dto
+    ) {
+        User updatedUser = userService.modifyDescription(dto, user);
+        return ResponseEntity.ok(Map.of(
+                "description",
+                updatedUser.getDescription() == null ? "" : updatedUser.getDescription()
+        ));
     }
 
     @Operation(summary = "프로필 이미지 수정")
     @PostMapping("/profile-image")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> updateProfileImage(
-            @Parameter(hidden = true) @AuthenticationPrincipal User user,
-            @ModelAttribute ProfileImageUpdateDto dto) {
+    public ResponseEntity<Map<String, String>> updateProfileImage(
+            @Parameter(hidden = true) @AuthenticationPrincipal(expression = "user") User user,
+            @ModelAttribute ProfileImageUpdateDto dto
+    ) {
         User updated = userService.changeProfileImage(user, dto);
-        return ResponseEntity.ok(Map.of("profileImageUrl", updated.getImageUrl()));
+        return ResponseEntity.ok(Map.of(
+                "profileImageUrl",
+                updated.getImageUrl() == null ? "" : updated.getImageUrl()
+        ));
     }
-
-    @Operation(summary = "알림 전체 설정 토글")
-    @PutMapping("/alarm-settings/toggle")
-    @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> toggleAlarm(
-            @Parameter(hidden = true) @AuthenticationPrincipal User user,
-            @RequestParam boolean enabled) {
-        return ResponseEntity.ok(userService.toggleAllAlarm(user, enabled));
-    }
-
 
     @Operation(summary = "회원 탈퇴")
     @DeleteMapping("/me")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> deleteUser(
-            @Parameter(hidden = true) @AuthenticationPrincipal User user) {
+    public ResponseEntity<Void> deleteUser(
+            @Parameter(hidden = true) @AuthenticationPrincipal(expression = "user") User user
+    ) {
         userService.deleteUser(user);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
-
 }
