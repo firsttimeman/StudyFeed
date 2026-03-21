@@ -17,24 +17,59 @@ public class AuthCodeService {
 
     private final RedisTemplate<String, String> redisTemplate;
 
+    private static final long AUTH_CODE_TTL_MINUTES = 10;
+    private static final long VERIFIED_TTL_MINUTES = 30;
+
+    private static final String AUTH_CODE_PREFIX = "auth:code:";
+    private static final String VERIFIED_PREFIX = "auth:verified:";
+
+
     public void saveAuthCode(String email, String authCode) {
-        String key = "authCode:" + authCode; // 공백 제거
-        redisTemplate.opsForValue().set(key, authCode, 10, TimeUnit.MINUTES);
-        redisTemplate.opsForValue().set("emailByAuthCode:" +email, authCode, 10, TimeUnit.MINUTES);
-
-        log.info("✅ 저장된 키 from saveAuthCode: " + key);
-        log.info("✅ 저장된 인증 코드 saveAuthCOde: " + authCode);
-
+        redisTemplate.opsForValue().set(
+                 AUTH_CODE_PREFIX + email,
+                authCode,
+                AUTH_CODE_TTL_MINUTES,
+                TimeUnit.MINUTES
+        );
+        log.info("이메일 인증코드 저장 완료. email={}", email);
     }
 
+    public boolean checkAuthCode(String email, String authCode) {
+        String storedCode = redisTemplate.opsForValue().get(AUTH_CODE_PREFIX + email);
 
-    public String getEmailByAuthCode(String authCode) {
-        String email = redisTemplate.opsForValue().get("emailByAuthCode: " + authCode);
-        if(email == null) {
-            throw new AuthCodeException(ErrorCode.AUTH_CODE_MISMATCH);
+
+        log.info("storedCode=[{}]", storedCode);
+        log.info("authCode=[{}]", authCode);
+
+        if(storedCode == null) {
+          return false;
         }
-        return email;
+
+        if(!storedCode.equals(authCode)) {
+            return false;
+        }
+
+        redisTemplate.delete(AUTH_CODE_PREFIX + email);
+
+        redisTemplate.opsForValue().set(
+            VERIFIED_PREFIX + email,
+                "true",
+                VERIFIED_TTL_MINUTES,
+                TimeUnit.MINUTES
+        );
+        log.info("이메일 인증 성공. email={}", email);
+        return true;
     }
+
+    public boolean isVerified(String email) {
+        String value = redisTemplate.opsForValue().get(VERIFIED_PREFIX + email);
+        return "true".equals(value);
+    }
+
+    public void removeVerified(String email) {
+        redisTemplate.delete(VERIFIED_PREFIX + email);
+    }
+
 
 
     public String generateAuthCode() {
@@ -52,27 +87,14 @@ public class AuthCodeService {
         return sb.toString();
     }
 
-
-    public boolean checkAuthCode(String email, String authCode) {
-        System.out.println(email);
-        System.out.println(authCode);
-        String storedCode = redisTemplate.opsForValue().get("authCode:" + authCode);
-        System.out.println("✅ 저장된 인증 코드: " + storedCode);
-        System.out.println("✅ 사용자가 입력한 인증 코드: " + authCode);
-        if(storedCode != null && storedCode.equals(authCode)) {
-            redisTemplate.delete("authCode: " + email);
-            return true;
+    public void validateVerified(String email) {
+        if(!isVerified(email)) {
+            throw new AuthCodeException(ErrorCode.AUTH_CODE_MISMATCH);
         }
-
-        return false;
     }
 
-    public String getAuthCode(String email) {
-        return redisTemplate.opsForValue().get("emailByAuthCode:" + email);
-    }
 
-    public void removeAuthCode(String email) {
-        redisTemplate.delete("authCode:" + email);
-        redisTemplate.delete("emailByAuthCode:" + redisTemplate.opsForValue().get("authCode:" + email));
-    }
+
+
+
 }
