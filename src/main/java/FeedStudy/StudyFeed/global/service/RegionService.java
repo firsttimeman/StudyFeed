@@ -22,7 +22,8 @@ public class RegionService {
            throw new RegionException(ErrorCode.REGION_MAIN_NOT_FOUND);
         }
 
-        if(regionSub != null && !regionRepository.existsByMainRegionAndSubRegion(regionMain, regionSub)) {
+        if(regionSub != null && !regionSub.isBlank()
+           && !regionRepository.existsByMainRegionAndSubRegion(regionMain, regionSub)) {
             throw new RegionException(ErrorCode.REGION_SUB_NOT_FOUND);
         }
 
