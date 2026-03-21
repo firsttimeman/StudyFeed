@@ -4,7 +4,6 @@ import FeedStudy.StudyFeed.global.type.Topic;
 import FeedStudy.StudyFeed.squad.entity.Squad;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -13,13 +12,14 @@ import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 
 @Getter
-@Setter
 @AllArgsConstructor
 public class SquadSimpleDto {
 
-    private Long pid;
-    private Topic category;         // ✅ String → Topic
-    private String categoryLabel;   // ✅ 화면 표시용 (예: “건강/운동”)
+    private Long squadId;
+
+    private Topic category;
+    private String categoryLabel;
+
     private String name;
     private String regionLabel;
     private String genderLabel;
@@ -33,89 +33,112 @@ public class SquadSimpleDto {
     private boolean closed;
     private int currentCount;
     private int maxParticipants;
+
     private int minAge;
     private int maxAge;
 
     // 화면 표시용
-    private String ddayLabel;        // D-3 / D-DAY / D+1
-    private String statusLabel;      // "모집중" / "정원마감" / "종료"
-    private String createdAgoLabel;  // "방금" / "1일 전" / "1시간 전" 등
-    private String peopleLabel;      // "3/5"
-    private String membership;       // "OWNER" / "JOINED"
-    private Long pendingCount;       // (옵션) 오너+승인형일 때만
+    private String ddayLabel;
+    private String statusLabel;
+    private String createdAgoLabel;
+    private String peopleLabel;
 
-    /** ✅ Squad → DTO 변환 */
+    private String membership;   // OWNER / JOINED / null 가능
+    private Long pendingCount;   // 승인형일 때만 값 존재
+
+    /** Squad → DTO 변환 */
     public static SquadSimpleDto toDto(
-            Squad s,
-            String membership,      // "OWNER"/"JOINED"
-            Long pendingCountOpt    // null 허용
+            Squad squad,
+            String membership,
+            Long pendingCount
     ) {
-        String regionLabel = s.getRegionMain()
-                             + ((s.getRegionSub() != null && !"전체".equals(s.getRegionSub()))
-                ? " " + s.getRegionSub() : "");
 
-        String genderLabel = s.getGenderRequirement().getGender();
+        String regionLabel = squad.getRegionMain()
+                             + ((squad.getRegionSub() != null && !"전체".equals(squad.getRegionSub()))
+                ? " " + squad.getRegionSub()
+                : "");
 
-        String dday = calcDDayLabel(s.getDate());
-        String status = calcStatusLabel(s);
-        String createdAgo = calcAgoLabel(s.getCreatedAt());
-        String people = s.getCurrentCount() + "/" + s.getMaxParticipants();
+        String genderLabel = squad.getGenderRequirement().getDescription();
+
+        String dday = calcDDayLabel(squad.getDate());
+        String status = calcStatusLabel(squad);
+        String createdAgo = calcAgoLabel(squad.getCreatedAt());
+        String people = squad.getCurrentCount() + "/" + squad.getMaxParticipants();
 
         return new SquadSimpleDto(
-                s.getId(),
-                s.getCategory(),                        // ✅ Topic enum 그대로
-                s.getCategory().getDescription(),        // ✅ 화면용 한글 라벨
-                s.getTitle(),
+                squad.getId(),
+                squad.getCategory(),
+                squad.getCategory().getDescription(),
+                squad.getTitle(),
                 regionLabel,
                 genderLabel,
-                s.getDate(),
-                s.getTime(),
-                s.isTimeSpecified(),
-                s.getCreatedAt(),
-                s.isClosed(),
-                s.getCurrentCount(),
-                s.getMaxParticipants(),
-                s.getMinAge(),
-                s.getMaxAge(),
+                squad.getDate(),
+                squad.getTime(),
+                squad.isTimeSpecified(),
+                squad.getCreatedAt(),
+                squad.isClosed(),
+                squad.getCurrentCount(),
+                squad.getMaxParticipants(),
+                squad.getMinAge(),
+                squad.getMaxAge(),
                 dday,
                 status,
                 createdAgo,
                 people,
-                membership == null || membership.isBlank() ? "JOINED" : membership,
-                pendingCountOpt
+                membership,
+                pendingCount
         );
     }
 
     /** D-day 계산 */
     private static String calcDDayLabel(LocalDate date) {
         long diff = ChronoUnit.DAYS.between(LocalDate.now(), date);
+
         if (diff == 0) return "D-DAY";
-        return diff > 0 ? "D-" + diff : "D+" + Math.abs(diff);
+        if (diff > 0) return "D-" + diff;
+
+        return "D+" + Math.abs(diff);
     }
 
     /** 상태 계산 */
-    private static String calcStatusLabel(Squad s) {
+    private static String calcStatusLabel(Squad squad) {
+
         LocalDate today = LocalDate.now();
+
         boolean ended =
-                s.getDate().isBefore(today)
-                || (s.getDate().isEqual(today)
-                    && s.isTimeSpecified()
-                    && s.getTime() != null
-                    && LocalTime.now().isAfter(s.getTime()));
+                squad.getDate().isBefore(today)
+                || (
+                        squad.getDate().isEqual(today)
+                        && squad.isTimeSpecified()
+                        && squad.getTime() != null
+                        && LocalTime.now().isAfter(squad.getTime())
+                );
+
         if (ended) return "종료";
-        if (s.isClosed() || s.getCurrentCount() >= s.getMaxParticipants()) return "정원마감";
+
+        if (squad.isClosed() || squad.getCurrentCount() >= squad.getMaxParticipants()) {
+            return "정원마감";
+        }
+
         return "모집중";
     }
 
-    /** 생성 시점으로부터 경과 시간 계산 */
+    /** 생성 시점 기준 경과 시간 */
     private static String calcAgoLabel(LocalDateTime created) {
+
         LocalDateTime now = LocalDateTime.now();
+
         long minutes = Duration.between(created, now).toMinutes();
+
         if (minutes < 1) return "방금";
         if (minutes < 60) return minutes + "분 전";
+
         long hours = minutes / 60;
+
         if (hours < 24) return hours + "시간 전";
+
         long days = hours / 24;
+
         return days + "일 전";
     }
 }
