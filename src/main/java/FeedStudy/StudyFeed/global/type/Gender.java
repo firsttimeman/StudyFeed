@@ -1,24 +1,17 @@
 package FeedStudy.StudyFeed.global.type;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
-@RequiredArgsConstructor
 @Getter
 public enum Gender {
 
-    ALL("누구나"),
-    MALE("남성만"),
-    FEMALE("여성만");
+    ALL("전체"),
+    MALE("남성"),
+    FEMALE("여성");
 
-    private String gender;
+    private final String description;
 
-    private Gender(String gender) {
-        this.gender = gender;
+    Gender(String description) {
+        this.description = description;
     }
-
-    public String getName() {
-        return gender;
-    }
-
 }
