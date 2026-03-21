@@ -5,14 +5,13 @@ import FeedStudy.StudyFeed.global.type.ReportStatus;
 import FeedStudy.StudyFeed.report.type.ReportReasonUser;
 import FeedStudy.StudyFeed.user.entity.User;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Getter
-@Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
         name = "report_user",
         uniqueConstraints = @UniqueConstraint(columnNames = {"reporter_id", "reported_id"})
@@ -21,18 +20,21 @@ public class ReportUser extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reporter_id", nullable = false)
-    private User reporter;  // ✅ 변경
+    private User reporter;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reported_id", nullable = false)
-    private User reported;  // ✅ 변경
+    private User reported;
 
     @Enumerated(EnumType.STRING)
-    private ReportStatus status = ReportStatus.PENDING;
+    @Column(nullable = false)
+    private ReportStatus status;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private ReportReasonUser reportReasonUser;
 
+    @Column(length = 300)
     private String content;
 
     public ReportUser(User reporter, User reported, ReportReasonUser reason, String content) {
@@ -40,5 +42,10 @@ public class ReportUser extends BaseEntity {
         this.reported = reported;
         this.reportReasonUser = reason;
         this.content = content;
+        this.status = ReportStatus.PENDING;
+    }
+
+    public void changeStatus(ReportStatus status) {
+        this.status = status;
     }
 }
