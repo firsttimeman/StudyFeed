@@ -1,4 +1,4 @@
-package FeedStudy.StudyFeed.user.repository;
+package FeedStudy.StudyFeed.auth.repository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -11,10 +11,18 @@ import java.util.concurrent.TimeUnit;
 public class RefreshRepository {
 
     private final RedisTemplate<String, String> redisTemplate;
+
     private static final String REFRESH_TOKEN_PREFIX = "refresh_token:";
+    private static final long REFRESH_TOKEN_TTL_DAYS = 7;
+
+
 
     public void saveRefreshToken(String email, String refreshToken) {
-        redisTemplate.opsForValue().set(REFRESH_TOKEN_PREFIX + email, refreshToken, 7, TimeUnit.DAYS);
+        redisTemplate.opsForValue().set(
+                REFRESH_TOKEN_PREFIX + email,
+                refreshToken,
+                REFRESH_TOKEN_TTL_DAYS,
+                TimeUnit.DAYS);
 
     }
 
@@ -24,13 +32,7 @@ public class RefreshRepository {
 
     public void deleteRefreshToken(String email) {
         String key = "refresh_token:" + email;
-
-        System.out.println("🛑 삭제 시도할 키: " + key);
-        System.out.println("🛑 삭제 전 값: " + redisTemplate.opsForValue().get(key));
-
         redisTemplate.delete(key);
-
-        System.out.println("✅ 삭제 후 값: " + redisTemplate.opsForValue().get(key));
     }
 
     public Long getExpirationTime(String email) {
