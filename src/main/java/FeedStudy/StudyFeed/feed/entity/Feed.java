@@ -1,19 +1,16 @@
 package FeedStudy.StudyFeed.feed.entity;
 
-import FeedStudy.StudyFeed.feed.dto.FeedRequest;
 import FeedStudy.StudyFeed.global.entity.BaseEntity;
 import FeedStudy.StudyFeed.global.type.Topic;
 import FeedStudy.StudyFeed.user.entity.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Getter
-@Setter
 @Entity
 @NoArgsConstructor
 @Table(name = "feed")
@@ -75,12 +72,5 @@ public class Feed extends BaseEntity {
         }
     }
 
-    public void increaseLikeCount() {
-        this.likeCount = this.likeCount + 1;
-    }
-    public void decreaseLikeCount() {
-        if (this.likeCount > 0) {
-            this.likeCount = this.likeCount - 1;
-        }
-    }
+
 }
