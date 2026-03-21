@@ -20,13 +20,23 @@ public interface SquadRepository extends JpaRepository<Squad, Long> {
     List<Squad> findByUser(User user);
 
     @Query("""
-select s from Squad s
-where (:category is null or s.category = :category)
-and (:regionMain = '전체' or s.regionMain = :regionMain)
-and (:regionSub = '전체' or s.regionSub = :regionSub)
-and (:recruitingOnly = false or (s.closed = false and s.currentCount < s.maxParticipants))
-order by s.date, s.time, s.createdAt desc
-
+select s
+from Squad s
+where
+    (:category is null or s.category = :category)
+    and (:regionMain = '전체' or s.regionMain = :regionMain)
+    and (:regionSub = '전체' or s.regionSub = :regionSub)
+    and (
+        :recruitingOnly = false
+        or (
+            s.closed = false
+            and s.currentCount < s.maxParticipants
+        )
+    )
+order by
+    s.date asc,
+    s.time asc,
+    s.createdAt desc
 """)
     Page<Squad> findFilteredSquads(@Param("category") Topic category,
                                    @Param("regionMain") String regionMain,
