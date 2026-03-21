@@ -1,5 +1,6 @@
 package FeedStudy.StudyFeed.user.dto;
 
+import FeedStudy.StudyFeed.global.type.Gender;
 import FeedStudy.StudyFeed.user.entity.User;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,7 +15,7 @@ public class UserSimpleDto {
 
     private String nickname;
     private String profileUrl;
-    private String gender;
+    private Gender gender;
     private LocalDate birth;
 
     public static UserSimpleDto toDto(User user) {
