@@ -14,6 +14,7 @@ public enum ErrorCode {
     PASSWORD_NOT_MATCH(HttpStatus.UNAUTHORIZED, "PASSWORD_NOT_MATCH", "비밀번호가 틀립니다."),
     NICKNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "NICKNAME_ALREADY_EXISTS", "닉네임이 존재합니다"),
     NICKNAME_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "NICKNAME_GENERATION_FAILED", "닉네임 생성에 실패했습니다."),
+    LOGIN_FAILED(HttpStatus.BAD_REQUEST,"LOGIN_FAILED", "로그인에 실패했습니다."),
 
     // 인증 / 토큰 / 키
     INVALID_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_ACCESS_TOKEN", "액세스 토큰이 존재하지 않습니다."),
@@ -30,6 +31,9 @@ public enum ErrorCode {
     IMAGE_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR,"IMAGE_NOT_FOUND", "이미지를 찾을수가 없습니다."),
     UNAUTHORIZED_IMAGE_DELETE(HttpStatus.INTERNAL_SERVER_ERROR, "UNAUTHORIZED_IMAGE_DELETE", "이미지를 삭제할수가 없습니다."),
     IMAGE_DELETE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "IMAGE_DELETE_FAILED", "이미지 삭제를 실패 했습니다."),
+    S3_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "S3_ERROR", "s3에 파일을 넣기 실패했습니다."),
+    S3_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "S3_UPLOAD_FAILED", "S3 파일 업로드에 실패했습니다."),
+    S3_DELETE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "S3_DELETE_FAILED", "S3 파일 삭제에 실패했습니다."),
 
     // 피드 / 신고
     FEED_NOT_FOUND(HttpStatus.NOT_FOUND, "FEED_NOT_FOUND", "피드를 찾을 수 없습니다."),
@@ -88,7 +92,15 @@ public enum ErrorCode {
 
     // 지역
     REGION_MAIN_NOT_FOUND(HttpStatus.NOT_FOUND, "REGION_MAIN_NOT_FOUND", "도/시 정보가 존재하지 않습니다."),
-    REGION_SUB_NOT_FOUND(HttpStatus.NOT_FOUND, "REGION_SUB_NOT_FOUND", "도/시 또는 시/군/구 정보가 존재하지 않습니다.");
+    REGION_SUB_NOT_FOUND(HttpStatus.NOT_FOUND, "REGION_SUB_NOT_FOUND", "도/시 또는 시/군/구 정보가 존재하지 않습니다."),
+
+    SELF_REPORT_NOT_ALLOWED(HttpStatus.BAD_REQUEST,"SELF_REPORT_NOT_ALLOWED" ,"자기 자신은 신고할 수 없습니다."),
+    INVALID_REPORT_REASON(HttpStatus.BAD_REQUEST,"INVALID_REPORT_REASON", "신고 사유가 올바르지 않습니다."),
+
+    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_NOT_FOUND","공지사항을 찾을 수 없습니다."),
+    POLICY_ALREADY_EXISTS(HttpStatus.CONFLICT, "POLICY_ALREADY_EXISTS", "정책 정보는 이미 존재합니다."),
+    POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "POLICY_NOT_FOUND", "정책 정보가 존재하지 않습니다.");
+
 
     private final HttpStatus status;
     private final String code;
