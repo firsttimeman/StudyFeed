@@ -3,13 +3,15 @@ package FeedStudy.StudyFeed.squad.entity;
 import FeedStudy.StudyFeed.global.entity.BaseEntity;
 import FeedStudy.StudyFeed.global.type.Gender;
 import FeedStudy.StudyFeed.global.type.JoinType;
-import FeedStudy.StudyFeed.global.type.MembershipStatus;
 import FeedStudy.StudyFeed.global.type.Topic;
 import FeedStudy.StudyFeed.squad.dto.SquadRequest;
 import FeedStudy.StudyFeed.squad.dto.UpdateSquadRequest;
 import FeedStudy.StudyFeed.user.entity.User;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
@@ -22,7 +24,6 @@ import java.util.Optional;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
 @Table(name = "squad")
 public class Squad extends BaseEntity {
 
@@ -30,36 +31,41 @@ public class Squad extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "leader_id", nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
-    private User user; // 리더
+    private User user;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Topic category; // ✅ Topic Enum 사용
+    @Column(nullable = false, length = 30)
+    private Topic category;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private String title;
 
     @Lob
     private String description;
 
     /** -------------------- 지역 -------------------- **/
-    @Column(nullable = false)
+    @Column(nullable = false, length = 30)
     private String regionMain;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private String regionSub;
 
     /** -------------------- 모집 조건 -------------------- **/
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private Gender genderRequirement = Gender.ALL;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private JoinType joinType = JoinType.APPROVAL;
 
+    @Column(nullable = false)
     private int maxParticipants;
+
+    @Column(nullable = false)
     private int minAge;
+
+    @Column(nullable = false)
     private int maxAge;
 
     /** -------------------- 일정 -------------------- **/
@@ -75,27 +81,37 @@ public class Squad extends BaseEntity {
     @Column(nullable = false)
     private boolean closed = false;
 
+    @Column(nullable = false)
     private int currentCount = 1; // 리더 포함
 
+    @Column(nullable = false)
     private int reportCount = 0;
 
+    @Column(length = 500)
     private String notice;
 
     /** -------------------- 연관관계 -------------------- **/
     @OneToMany(mappedBy = "squad", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SquadMember> members = new ArrayList<>();
 
-
-    /** ==============================================================
-     * 🧱 생성 메서드
-     * ==============================================================
-     */
+    /** -------------------- 생성 -------------------- **/
     @Builder(builderMethodName = "createBuilder")
-    private Squad(User user, Topic category, String title, String description,
-                  String regionMain, String regionSub, Gender genderRequirement,
-                  JoinType joinType, int maxParticipants, int minAge, int maxAge,
-                  LocalDate date, LocalTime time, boolean timeSpecified) {
-
+    private Squad(
+            User user,
+            Topic category,
+            String title,
+            String description,
+            String regionMain,
+            String regionSub,
+            Gender genderRequirement,
+            JoinType joinType,
+            int maxParticipants,
+            int minAge,
+            int maxAge,
+            LocalDate date,
+            LocalTime time,
+            boolean timeSpecified
+    ) {
         this.user = user;
         this.category = Optional.ofNullable(category).orElse(Topic.OTHER);
         this.title = title;
@@ -108,12 +124,12 @@ public class Squad extends BaseEntity {
         this.minAge = minAge;
         this.maxAge = maxAge;
         this.date = date;
-        this.time = timeSpecified ? time : null;
         this.timeSpecified = timeSpecified;
+        this.time = timeSpecified ? time : null;
     }
 
     public static Squad create(User user, SquadRequest req) {
-        Squad s = Squad.createBuilder()
+        Squad squad = Squad.createBuilder()
                 .user(user)
                 .category(req.getCategory())
                 .title(req.getTitle())
@@ -130,75 +146,95 @@ public class Squad extends BaseEntity {
                 .timeSpecified(Boolean.TRUE.equals(req.getTimeSpecified()))
                 .build();
 
-        // ✅ 리더 포함 초기 상태
-        s.currentCount = 1;
-        if (s.maxParticipants <= 1) s.closed = true; // 정원 1이면 즉시 마감
-        return s;
+        squad.currentCount = 1;
+
+        if (squad.maxParticipants <= 1) {
+            squad.closed = true;
+        }
+
+        return squad;
     }
 
-
-    /** ==============================================================
-     * 🔄 업데이트 메서드 (용도 분리)
-     * ==============================================================
-     */
+    /** -------------------- 수정 -------------------- **/
     public void updateExceptCapacity(UpdateSquadRequest req) {
-        this.category          = req.getCategory()          != null ? req.getCategory()          : this.category;
-        this.title             = req.getTitle()             != null ? req.getTitle()             : this.title;
-        this.description       = req.getDescription()       != null ? req.getDescription()       : this.description;
-        this.regionMain        = req.getRegionMain()        != null ? req.getRegionMain()        : this.regionMain;
-        this.regionSub         = req.getRegionSub()         != null ? req.getRegionSub()         : this.regionSub;
+        this.category = req.getCategory() != null ? req.getCategory() : this.category;
+        this.title = req.getTitle() != null ? req.getTitle() : this.title;
+        this.description = req.getDescription() != null ? req.getDescription() : this.description;
+        this.regionMain = req.getRegionMain() != null ? req.getRegionMain() : this.regionMain;
+        this.regionSub = req.getRegionSub() != null ? req.getRegionSub() : this.regionSub;
         this.genderRequirement = req.getGenderRequirement() != null ? req.getGenderRequirement() : this.genderRequirement;
-        this.joinType          = req.getJoinType()          != null ? req.getJoinType()          : this.joinType;
-        this.minAge            = req.getMinAge()            != null ? req.getMinAge()            : this.minAge;
-        this.maxAge            = req.getMaxAge()            != null ? req.getMaxAge()            : this.maxAge;
-        this.date              = req.getDate()              != null ? req.getDate()              : this.date;
+        this.joinType = req.getJoinType() != null ? req.getJoinType() : this.joinType;
+        this.minAge = req.getMinAge() != null ? req.getMinAge() : this.minAge;
+        this.maxAge = req.getMaxAge() != null ? req.getMaxAge() : this.maxAge;
+        this.date = req.getDate() != null ? req.getDate() : this.date;
 
         if (req.getTimeSpecified() != null) {
             this.timeSpecified = req.getTimeSpecified();
         }
+
         if (this.timeSpecified) {
-            if (req.getTime() != null) this.time = req.getTime();
+            if (req.getTime() != null) {
+                this.time = req.getTime();
+            }
         } else {
             this.time = null;
         }
     }
 
-    /** 서비스에서 정원 변경 성공 후 호출 */
-    public void applyMaxParticipantsFromService(int newMax) {
+    public void changeMaxParticipants(int newMax) {
         this.maxParticipants = newMax;
     }
 
-
-    /** ==============================================================
-     * 📈 상태 제어 메서드
-     * ==============================================================
-     */
-    public void increaseCurrentCount() { this.currentCount++; }
+    /** -------------------- 상태 제어 -------------------- **/
+    public void increaseCurrentCount() {
+        this.currentCount++;
+    }
 
     public void decreaseCurrentCount() {
-        if (this.currentCount > 0) this.currentCount--;
+        if (this.currentCount > 0) {
+            this.currentCount--;
+        }
     }
 
-    public void increaseReportCount() { this.reportCount++; }
+    public void increaseReportCount() {
+        this.reportCount++;
+    }
 
     public void decreaseReportCount() {
-        if (this.reportCount > 0) this.reportCount--;
+        if (this.reportCount > 0) {
+            this.reportCount--;
+        }
     }
 
-    public void close() { this.closed = true; }
-    public void open()  { this.closed = false; }
+    public void close() {
+        this.closed = true;
+    }
 
-    public boolean isOnlyOneLeft() { return this.currentCount == 1; }
+    public void open() {
+        this.closed = false;
+    }
 
-    /** 회원 연결 (카운트는 서비스에서 관리) */
+    public boolean isOnlyOneLeft() {
+        return this.currentCount == 1;
+    }
+
     public void joinParticipant(SquadMember member) {
+        if (member == null) {
+            return;
+        }
         this.members.add(member);
     }
 
     @PrePersist
     public void prePersist() {
-        if (this.genderRequirement == null) this.genderRequirement = Gender.ALL;
-        if (this.joinType == null) this.joinType = JoinType.APPROVAL;
-        if (this.category == null) this.category = Topic.OTHER;
+        if (this.genderRequirement == null) {
+            this.genderRequirement = Gender.ALL;
+        }
+        if (this.joinType == null) {
+            this.joinType = JoinType.APPROVAL;
+        }
+        if (this.category == null) {
+            this.category = Topic.OTHER;
+        }
     }
 }
