@@ -1,4 +1,4 @@
-package FeedStudy.StudyFeed.user.dto;
-
-public record FcmTokenRequest(String fcmToken) {
-}
+//package FeedStudy.StudyFeed.user.dto;
+//
+//public record FcmTokenRequest(String fcmToken) {
+//}
