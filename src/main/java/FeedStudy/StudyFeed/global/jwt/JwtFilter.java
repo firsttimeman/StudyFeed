@@ -1,68 +1,71 @@
 package FeedStudy.StudyFeed.global.jwt;
 
-import FeedStudy.StudyFeed.user.entity.User;
-import FeedStudy.StudyFeed.user.repository.UserRepository;
+import FeedStudy.StudyFeed.auth.repository.BlackListRepository;
 import FeedStudy.StudyFeed.user.service.CustomUserDetailsService;
-import FeedStudy.StudyFeed.user.service.UserService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.AuthenticationManager;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
 
-@Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final UserRepository userRepository;
+    private final CustomUserDetailsService customUserDetailsService;
+    private final BlackListRepository blackListRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws IOException, ServletException {
 
-        if("/api/auth/refresh".equals(request.getRequestURI())) {
-            chain.doFilter(request, response);
-            return;
-        }
-
         String header = request.getHeader("Authorization");
 
         try {
-            if(header != null && header.startsWith("Bearer ")) {
+            if (header != null && header.startsWith("Bearer ")) {
                 String token = header.substring(7);
 
-
-                Claims claims = jwtUtil.validateToken(token);
-                Object type = claims.get("token_type");
-                if(!"access".equals(type)) {
+                if (blackListRepository.isTokenBlackListed(token)) {
                     chain.doFilter(request, response);
                     return;
                 }
 
-                String email = claims.getSubject();
-                userRepository.findByEmail(email).ifPresent(user -> {
-                    var authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                });
+                Claims claims = jwtUtil.validateToken(token);
 
+                String tokenType = claims.get("token_type", String.class);
+
+                // access token만 인증에 사용
+                if ("access".equals(tokenType)
+                    && SecurityContextHolder.getContext().getAuthentication() == null) {
+
+                    String email = claims.getSubject();
+
+                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
+
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
+
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             }
         } catch (Exception e) {
             SecurityContextHolder.clearContext();
+            log.debug("JWT 인증 처리 실패", e);
         }
 
-
         chain.doFilter(request, response);
-
     }
 }
