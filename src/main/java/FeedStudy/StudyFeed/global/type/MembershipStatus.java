@@ -9,5 +9,6 @@ public enum MembershipStatus {
     JOINED,     // 최종 멤버 (활동 가능)
     PENDING,    // 승인 대기
     REJECTED,   // 신청 거절
-    KICKED_OUT  // 강퇴
+    KICKED_OUT,  // 강퇴
+    LEFT
 }
