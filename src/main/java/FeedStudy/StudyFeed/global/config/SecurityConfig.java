@@ -2,7 +2,7 @@ package FeedStudy.StudyFeed.global.config;
 
 import FeedStudy.StudyFeed.global.jwt.JwtFilter;
 import FeedStudy.StudyFeed.global.jwt.JwtUtil;
-import FeedStudy.StudyFeed.user.repository.UserRepository;
+import FeedStudy.StudyFeed.auth.repository.BlackListRepository;
 import FeedStudy.StudyFeed.user.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -28,7 +28,7 @@ public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
     private final CustomUserDetailsService customUserDetailsService;
-    private final UserRepository userRepository;
+    private final BlackListRepository blackListRepository;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -36,10 +36,21 @@ public class SecurityConfig {
     }
 
 
+
+    /**
+     * AuthenticationManager를 Bean으로 등록해서
+     * AuthService에서 로그인 인증(email/password 검증)에 사용할 수 있도록 한다.
+     */
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+    public AuthenticationManager authenticationManager
+    (AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
-    } // 이게 무슨 기능이였지????
+    }
+
+    @Bean
+    public JwtFilter jwtFilter() {
+        return new JwtFilter(jwtUtil, customUserDetailsService, blackListRepository);
+    }
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
@@ -51,30 +62,33 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   CorsConfigurationSource corsConfigurationSource) throws Exception {
 
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**",
+                        .requestMatchers(
+                                "/api/auth/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/swagger-resources/**",
-                                "/v3/api-docs/**",
-                                "/webjars/**",
-                                "/ws-stomp/**", "/ws/**").permitAll()
+                                "/actuator/prometheus",
+                                "/actuator/health",
+                                "/actuator/info"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .logout(logout -> logout.disable())
-                .formLogin().disable()
-                .httpBasic().disable()
+                .formLogin(form -> form.disable())
+                .httpBasic(basic -> basic.disable())
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(new JwtFilter(jwtUtil, userRepository), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
-
     }
 }
