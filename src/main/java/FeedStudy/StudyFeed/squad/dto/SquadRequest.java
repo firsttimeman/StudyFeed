@@ -19,7 +19,8 @@ import java.time.LocalTime;
 public class SquadRequest {
 
     @Schema(description = "스쿼드 제목", example = "풋살할 사람 구해요!", minLength = 1, maxLength = 50)
-    @Size(min = 1, max = 50)
+    @NotBlank
+    @Size(max = 50)
     private String title;
 
     @Schema(description = "카테고리", example = "HEALTH_FITNESS", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -39,12 +40,12 @@ public class SquadRequest {
     private String description;
 
     @Schema(description = "최소 연령", example = "20")
-    @Min(50)
+    @Min(20)
     @Max(100)
     private int minAge;
 
     @Schema(description = "최대 연령", example = "40")
-    @Min(50)
+    @Min(20)
     @Max(100)
     private int maxAge;
 
@@ -62,11 +63,11 @@ public class SquadRequest {
     @Schema(description = "성별 제한 (ALL, MALE, FEMALE)", example = "ALL")
     private Gender genderRequirement = Gender.ALL;
 
-    @Schema(description = "참여 승인 방식 (AUTO, APPROVAL)", example = "APPROVAL")
+    @Schema(description = "참여 방식 (DIRECT 즉시 참여 / APPROVAL 승인 필요)", example = "APPROVAL")
     private JoinType joinType = JoinType.APPROVAL;
 
     @Schema(description = "최대 인원 수", example = "10")
     @Min(1)
-    @Max(50)
+    @Max(20)
     private int maxParticipants;
 }
