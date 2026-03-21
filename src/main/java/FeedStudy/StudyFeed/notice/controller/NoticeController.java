@@ -1,11 +1,12 @@
-package FeedStudy.StudyFeed.global.controller;
+package FeedStudy.StudyFeed.notice.controller;
 
-import FeedStudy.StudyFeed.global.dto.NoticeRequest;
-import FeedStudy.StudyFeed.global.dto.NoticeResponse;
-import FeedStudy.StudyFeed.global.service.NoticeService;
+import FeedStudy.StudyFeed.notice.dto.NoticeRequest;
+import FeedStudy.StudyFeed.notice.dto.NoticeResponse;
+import FeedStudy.StudyFeed.notice.service.NoticeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,7 +26,7 @@ public class NoticeController {
     @Operation(summary = "공지 등록", description = "관리자가 새로운 공지를 등록합니다.")
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<NoticeResponse> createNotice(@RequestBody NoticeRequest request) {
+    public ResponseEntity<NoticeResponse> createNotice(@Valid @RequestBody NoticeRequest request) {
         return ResponseEntity.ok(noticeService.createNotice(request));
     }
 
@@ -60,7 +61,8 @@ public class NoticeController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<NoticeResponse> updateNotice(
             @PathVariable Long id,
-            @RequestBody NoticeRequest request) {
+            @Valid @RequestBody NoticeRequest request
+    ) {
         return ResponseEntity.ok(noticeService.updateNotice(id, request));
     }
 
@@ -71,6 +73,4 @@ public class NoticeController {
         noticeService.deleteNotice(id);
         return ResponseEntity.noContent().build();
     }
-
-
 }
