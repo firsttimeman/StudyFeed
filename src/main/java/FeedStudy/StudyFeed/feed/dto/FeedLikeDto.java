@@ -8,9 +8,7 @@ import lombok.Getter;
 public class FeedLikeDto {
     private boolean like;
 
-    private int count;
-
-    public static FeedLikeDto toDto(boolean isLike, int count) {
-        return new FeedLikeDto(isLike, count);
+    public static FeedLikeDto toDto(boolean isLike) {
+        return new FeedLikeDto(isLike);
     }
 }
