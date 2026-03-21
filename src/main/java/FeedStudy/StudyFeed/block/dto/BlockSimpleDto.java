@@ -9,11 +9,16 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class BlockSimpleDto {
+
     private Long id;
     private String gender;
     private String nickName;
 
     public static BlockSimpleDto toDto(User user) {
-        return new BlockSimpleDto(user.getId(), user.getGender(), user.getNickName());
+        return new BlockSimpleDto(
+                user.getId(),
+                user.getGender().name(),
+                user.getNickName()
+        );
     }
 }
